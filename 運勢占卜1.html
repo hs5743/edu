@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>今日運勢占卜</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f0f8ff;
+        }
+        h1 {
+            color: #ff6347;
+        }
+        #input-area {
+            margin-bottom: 20px;
+        }
+        #result {
+            font-size: 24px;
+            color: #32cd32;
+            margin-top: 20px;
+        }
+        #god-image {
+            margin-top: 20px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>今日運勢占卜</h1>
+    <div id="input-area">
+        <button onclick="predictFortune()">預測今日運勢</button>
+    </div>
+    <div id="result"></div>
+    <img id="god-image" src="" alt="神明圖案">
+
+    <script>
+        const fortunes = [
+            { text: '大吉', probability: 0.5, image: 'path_to_daiji_image.jpg' },
+            { text: '中吉', probability: 0.2, image: 'path_to_zhongji_image.jpg' },
+            { text: '小吉', probability: 0.15, image: 'path_to_xiaoji_image.jpg' },
+            { text: '兇', probability: 0.15, image: 'path_to_xiong_image.jpg' }
+        ];
+
+        function predictFortune() {
+            let random = Math.random();
+            let cumulativeProbability = 0;
+            let selectedFortune;
+
+            for (let i = 0; i < fortunes.length; i++) {
+                cumulativeProbability += fortunes[i].probability;
+                if (random <= cumulativeProbability) {
+                    selectedFortune = fortunes[i];
+                    break;
+                }
+            }
+
+            document.getElementById('result').innerText = '今日運勢：' + selectedFortune.text;
+            document.getElementById('god-image').src = selectedFortune.image;
+            document.getElementById('god-image').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
