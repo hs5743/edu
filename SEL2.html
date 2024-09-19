@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>情緒轉輪</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+            transition: background-color 1s ease; /* 背景顏色變更動畫 */
+        }
+
+        header {
+            background-color: #4e89ae;
+            color: white;
+            padding: 20px;
+            font-size: 24px;
+        }
+
+        #game-container {
+            margin: 40px auto;
+            width: 80%;
+            max-width: 800px;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            font-size: 28px;
+            color: #4e89ae;
+        }
+
+        #description {
+            margin: 20px 0;
+            padding: 20px;
+            background-color: #e7eff6;
+            border-radius: 8px;
+            font-size: 18px;
+            line-height: 1.6;
+            color: #333;
+            box-shadow: inset 0 4px 6px rgba(0, 0, 0, 0.05);
+            min-height: 100px;
+        }
+
+        select, button {
+            padding: 10px;
+            margin: 10px 0;
+            font-size: 16px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
+
+        select {
+            background-color: #f4f4f4;
+            width: 50%;
+            margin-bottom: 20px;
+        }
+
+        button {
+            background-color: #4e89ae;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #3b6b87;
+        }
+
+        .result {
+            margin-top: 20px;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        /* 轉輪動畫 */
+        #wheel {
+            width: 100px;
+            height: 100px;
+            border: 10px solid #4e89ae;
+            border-radius: 50%;
+            margin: 20px auto;
+            position: relative;
+            animation: spin 2s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        #pointer {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-bottom: 20px solid #ff3d3d;
+        }
+
+    </style>
+</head>
+<body>
+
+<header>情緒轉輪遊戲</header>
+
+<div id="game-container">
+    <h1>猜測情緒</h1>
+    <p>按下按鈕開始旋轉轉輪，然後從下拉選單中猜測該情境對應的情緒。</p>
+
+    <div id="wheel">
+        <div id="pointer"></div>
+    </div>
+
+    <div id="description">按下按鈕抽取情境...</div>
+
+    <select id="emotionSelect">
+        <option value="">選擇情緒</option>
+        <option value="喜悅">喜悅</option>
+        <option value="感激">感激</option>
+        <option value="平靜">平靜</option>
+        <option value="自豪">自豪</option>
+        <option value="興奮">興奮</option>
+        <option value="愛">愛</option>
+        <option value="滿足">滿足</option>
+        <option value="希望">希望</option>
+        <option value="悲傷">悲傷</option>
+        <option value="憤怒">憤怒</option>
+        <option value="恐懼">恐懼</option>
+        <option value="焦慮">焦慮</option>
+        <option value="挫折">挫折</option>
+        <option value="嫉妒">嫉妒</option>
+        <option value="內疚">內疚</option>
+        <option value="驚訝">驚訝</option>
+        <option value="好奇">好奇</option>
+        <option value="疲倦">疲倦</option>
+        <option value="空虛">空虛</option>
+        <option value="疑惑">疑惑</option>
+    </select>
+    
+    <br>
+    <button onclick="spinWheel()">抽取情境</button>
+    <button onclick="checkAnswer()">確認答案</button>
+
+    <div id="result" class="result"></div>
+</div>
+
+<script>
+    const emotions = [
+        { name: "喜悅", description: "運動會那天，接力賽的終點就在眼前，全班的目光都在我身上。我咬緊牙關拼命衝刺，終於我們贏了！當我跨過終點線，所有同學都衝過來，歡呼拍手。", bgColor: "#fef9c3" },
+        { name: "感激", description: "數學課上，當我對著難題困惑不解時，老師走過來耐心地幫我解釋，一切瞬間變得清晰明瞭。", bgColor: "#d4edda" },
+        { name: "平靜", description: "午休時，我坐在操場上的樹蔭下，手中捧著一本書，微風輕拂過臉龐，周圍一切似乎都變得那麼安靜。", bgColor: "#d6e9f5" },
+        { name: "自豪", description: "我的畫作被老師選中，掛在校園的牆上。當我路過時，看見自己的作品被大家欣賞，我忍不住心裡默默地微笑。", bgColor: "#ffe4b5" },
+        { name: "興奮", description: "當老師宣布我們下週要去動物園郊遊的時候，我立刻從椅子上彈了起來，迫不及待地計畫著每一件事。", bgColor: "#ffcccb" },
+        { name: "愛", description: "我和幾個同學為朋友準備了一個驚喜蛋糕，當他推開門時，看到我們為他慶祝的笑容，心中充滿了溫暖。", bgColor: "#ffebcd" },
+        { name: "滿足", description: "我和同學經過討論，終於解決了我們的爭執，大家都笑著點頭，事情完美地告一段落。", bgColor: "#e2f0cb" },
+        { name: "希望", description: "這次考試不理想，但我告訴自己一定會好好準備下一次，並且相信會有更好的結果。", bgColor: "#e0f7fa" },
+        { name: "悲傷", description: "當朋友告訴我他即將轉學時，我感覺像有一塊沉重的石頭壓在心上，教室裡的回憶一瞬間湧上心頭。", bgColor: "#c8e6c9" },
+        { name: "憤怒", description: "同學故意踢翻了我的水壺，還朝我露出不以為然的表情。我感覺一股熱氣直衝腦門，手不由自主地握緊了拳頭。", bgColor: "#ffccbc" },
+        { name: "焦慮", description: "考試將至，但我突然發現還有很多章節沒複習，心裡像有一條繃緊的弦，越來越焦急。" },
+        { name: "挫折", description: "在籃球比賽中，我一次次嘗試投籃，但每次都失敗，手開始顫抖，感覺自己怎麼都無法做到。" },
+        { name: "嫉妒", description: "當老師表揚了另一位同學的成就時，我低下了頭，心中隱隱作痛，明明我也很努力。" },
+        { name: "內疚", description: "因為我的謊言，朋友被老師誤會了，我看到他難過的樣子，心裡充滿了說不出的壓力。" },
+        { name: "驚訝", description: "老師突然宣布今天的考試取消，我愣住了，完全沒料到這個消息，教室裡瞬間變得沸騰。" },
+        { name: "好奇", description: "當老師在課堂上提到恐龍滅絕的原因時，我不由自主地坐直了身子，腦中充滿了各種問題。" },
+        { name: "疲倦", description: "那天的作業特別多，時間一分一秒過去，我的眼皮越來越重，手中的鉛筆都快拿不穩了。" },
+        { name: "空虛", description: "放學後，大家都忙著去參加社團活動，教室裡只剩下我一個人，我望著空蕩的桌椅，感覺不知該做什麼。" },
+        { name: "疑惑", description: "數學課上，老師寫下一個新的公式，大家都在認真做筆記，但我看了幾次還是完全不明白，只能一邊皺眉一邊思考。" }
+    ];
+
+    let currentEmotion = null;
+    let spinning = false;
+
+    function spinWheel() {
+        if (spinning) return; // 如果已經在旋轉，禁止再次觸發
+        spinning = true;
+        document.getElementById("wheel").style.animation = "spin 2s linear";
+
+        setTimeout(() => {
+            const randomIndex = Math.floor(Math.random() * emotions.length);
+            currentEmotion = emotions[randomIndex];
+            document.getElementById("description").innerText = currentEmotion.description;
+
+            // 動態更改背景顏色
+            document.body.style.backgroundColor = currentEmotion.bgColor;
+            document.getElementById("wheel").style.animation = ""; // 停止旋轉動畫
+
+            spinning = false;
+        }, 2000); // 動畫持續2秒
+    }
+
+    function checkAnswer() {
+        const userGuess = document.getElementById("emotionSelect").value;
+        if (!userGuess) {
+            alert("請選擇一個情緒！");
+            return;
+        }
+        if (userGuess === currentEmotion.name) {
+            document.getElementById("result").innerText = "答對了！";
+        } else {
+            document.getElementById("result").innerText = `答錯了！正確答案是：${currentEmotion.name}`;
+        }
+    }
+</script>
+
+</body>
+</html>
