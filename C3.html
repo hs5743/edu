@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能圍棋遊戲</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f4;
+            margin: 0;
+        }
+        #board {
+            display: grid;
+            grid-template-columns: repeat(9, 40px);
+            grid-template-rows: repeat(9, 40px);
+            gap: 1px;
+            background-color: #d2a679;
+            border: 2px solid #8b5a2b;
+            margin-top: 20px;
+        }
+        .cell {
+            width: 40px;
+            height: 40px;
+            background-color: #d2a679;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: 1px solid #8b5a2b;
+        }
+        .black, .white {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+        }
+        .black {
+            background-color: black;
+        }
+        .white {
+            background-color: white;
+        }
+        #controls {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        #score {
+            font-size: 18px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <button id="resetButton">重置遊戲</button>
+        <button id="calculateScoreButton">計算分數</button>
+    </div>
+    <div id="score">
+        黑棋分數: <span id="blackScore">0</span> | 白棋分數: <span id="whiteScore">0</span>
+    </div>
+    <div id="board"></div>
+    <div id="status"></div>
+
+    <script>
+        const boardSize = 9;
+        const board = document.getElementById("board");
+        const resetButton = document.getElementById("resetButton");
+        const calculateScoreButton = document.getElementById("calculateScoreButton");
+        const blackScoreDisplay = document.getElementById("blackScore");
+        const whiteScoreDisplay = document.getElementById("whiteScore");
+        const statusDisplay = document.getElementById("status");
+
+        let currentPlayer = "black";
+        let gameState = Array.from({ length: boardSize }, () => Array(boardSize).fill(null));
+
+        function createBoard() {
+            board.innerHTML = "";
+            for (let row = 0; row < boardSize; row++) {
+                for (let col = 0; col < boardSize; col++) {
+                    const cell = document.createElement("div");
+                    cell.classList.add("cell");
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+                    cell.addEventListener("click", handleCellClick);
+                    board.appendChild(cell);
+                }
+            }
+        }
+
+        function handleCellClick(event) {
+            const row = event.target.dataset.row;
+            const col = event.target.dataset.col;
+            if (gameState[row][col] !== null || currentPlayer !== "black") return;
+
+            gameState[row][col] = "black";
+            event.target.classList.add("black");
+
+            removeCapturedStones(row, col, "white");
+
+            currentPlayer = "white";
+            setTimeout(computerMove, 500);
+        }
+
+        function computerMove() {
+            const move = findBestMove();
+            if (move) {
+                const { row, col } = move;
+                gameState[row][col] = "white";
+                const cell = document.querySelector(`[data-row='${row}'][data-col='${col}']`);
+                cell.classList.add("white");
+
+                removeCapturedStones(row, col, "black");
+
+                currentPlayer = "black";
+            } else {
+                calculateScore();
+                checkWin();
+            }
+        }
+
+        function findBestMove() {
+            let bestMove = null;
+            let maxScore = -Infinity;
+
+            for (let row = 0; row < boardSize; row++) {
+                for (let col = 0; col < boardSize; col++) {
+                    if (gameState[row][col] === null) {
+                        const score = evaluatePosition(row, col, "white");
+                        if (score > maxScore) {
+                            maxScore = score;
+                            bestMove = { row, col };
+                        }
+                    }
+                }
+            }
+
+            return bestMove;
+        }
+
+        function evaluatePosition(row, col, color) {
+            let score = 0;
+
+            const opponent = color === "black" ? "white" : "black";
+            if (isCaptureMove(row, col, opponent)) score += 10;
+            score += getLibertyCount(row, col, color);
+
+            return score;
+        }
+
+        function isCaptureMove(row, col, opponent) {
+            gameState[row][col] = opponent;
+            const captured = !hasLiberty(row, col);
+            gameState[row][col] = null;
+            return captured;
+        }
+
+        function getLibertyCount(row, col, color) {
+            let liberties = 0;
+            [[0, 1], [1, 0], [0, -1], [-1, 0]].forEach(([dr, dc]) => {
+                const nr = row + dr;
+                const nc = col + dc;
+                if (nr >= 0 && nr < boardSize && nc >= 0 && nc < boardSize && gameState[nr][nc] === null) {
+                    liberties++;
+                }
+            });
+            return liberties;
+        }
+
+        function removeCapturedStones(row, col, opponent) {
+            const group = findGroup(row, col, opponent);
+            if (group && group.every(([r, c]) => !hasLiberty(r, c))) {
+                group.forEach(([gr, gc]) => {
+                    gameState[gr][gc] = null;
+                    const cell = document.querySelector(`[data-row='${gr}'][data-col='${gc}']`);
+                    cell.classList.remove("black", "white");
+                });
+            }
+        }
+
+        function findGroup(row, col, color) {
+            const stack = [[row, col]];
+            const group = [];
+            const visited = new Set();
+
+            while (stack.length > 0) {
+                const [r, c] = stack.pop();
+                const pos = `${r},${c}`;
+                if (visited.has(pos) || gameState[r][c] !== color) continue;
+
+                visited.add(pos);
+                group.push([r, c]);
+
+                [[0, 1], [1, 0], [0, -1], [-1, 0]].forEach(([dr, dc]) => {
+                    const nr = r + dr;
+                    const nc = c + dc;
+                    if (nr >= 0 && nr < boardSize && nc >= 0 && nc < boardSize) {
+                        stack.push([nr, nc]);
+                    }
+                });
+            }
+            return group;
+        }
+
+        function hasLiberty(row, col) {
+            return [[0, 1], [1, 0], [0, -1], [-1, 0]].some(([dr, dc]) => {
+                const nr = row + dr;
+                const nc = col + dc;
+                return nr >= 0 && nr < boardSize && nc >= 0 && nc < boardSize && gameState[nr][nc] === null;
+            });
+        }
+
+        function calculateScore() {
+            let blackScore = 0;
+            let whiteScore = 0;
+            const visited = new Set();
+
+            for (let row = 0; row < boardSize; row++) {
+                for (let col = 0; col < boardSize; col++) {
+                    const color = gameState[row][col];
+                    if (color === "black") blackScore++;
+                    else if (color === "white") whiteScore++;
+                    else if (color === null && !visited.has(`${row},${col}`)) {
+                        const areaScore = calculateAreaScore(row, col, visited);
+                        if (areaScore.black > areaScore.white) blackScore += areaScore.empty;
+                        else if (areaScore.white > areaScore.black) whiteScore += areaScore.empty;
+                    }
+                }
+            }
+
+            blackScoreDisplay.textContent = blackScore;
+            whiteScoreDisplay.textContent = whiteScore;
+        }
+
+        function calculateAreaScore(row, col, visited) {
+            const stack = [[row, col]];
+            let empty = 0;
+            let black = 0;
+            let white = 0;
+
+            while (stack.length > 0) {
+                const [r, c] = stack.pop();
+                const pos = `${r},${c}`;
+                if (visited.has(pos)) continue;
+
+                visited.add(pos);
+                if (gameState[r][c] === null) empty++;
+                else if (gameState[r][c] === "black") black++;
+                else if (gameState[r][c] === "white") white++;
+
+                [[0, 1], [1, 0], [0, -1], [-1, 0]].forEach(([dr, dc]) => {
+                    const nr = r + dr;
+                    const nc = c + dc;
+                    if (nr >= 0 && nr < boardSize && nc >= 0 && nc < boardSize && !visited.has(`${nr},${nc}`)) {
+                        stack.push([nr, nc]);
+                    }
+                });
+            }
+            return { black, white, empty };
+        }
+
+        function checkWin() {
+            calculateScore();
+            const blackScore = parseInt(blackScoreDisplay.textContent);
+            const whiteScore = parseInt(whiteScoreDisplay.textContent);
+
+            if (blackScore > whiteScore) {
+                statusDisplay.textContent = "黑棋勝利！";
+            } else if (whiteScore > blackScore) {
+                statusDisplay.textContent = "白棋勝利！";
+            } else {
+                statusDisplay.textContent = "平局！";
+            }
+        }
+
+        function resetGame() {
+            gameState = Array.from({ length: boardSize }, () => Array(boardSize).fill(null));
+            currentPlayer = "black";
+            blackScoreDisplay.textContent = "0";
+            whiteScoreDisplay.textContent = "0";
+            statusDisplay.textContent = "";
+            createBoard();
+        }
+
+        createBoard();
+        resetButton.addEventListener("click", resetGame);
+        calculateScoreButton.addEventListener("click", calculateScore);
+    </script>
+</body>
+</html>
