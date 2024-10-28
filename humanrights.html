@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>學校指標統計</title>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.0/papaparse.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        table, th, td {
+            border: 1px solid black;
+            border-collapse: collapse;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>學校指標統計</h1>
+
+    <!-- 上傳CSV檔案的按鈕 -->
+    <label for="fileInput">選擇CSV檔案：</label>
+    <input type="file" id="fileInput" accept=".csv" onchange="handleFileUpload(event)" />
+
+    <h2>選擇學校</h2>
+    <label for="schoolSelect">學校：</label>
+    <select id="schoolSelect" onchange="loadData()">
+        <option value="">請選擇學校</option>
+    </select>
+
+    <h2>統計結果</h2>
+    <table id="statisticsTable">
+        <thead>
+            <tr>
+                <th>指標</th>
+                <th>已達成</th>
+                <th>努力達成中</th>
+                <th>有困難，尚未達成</th>
+                <th>已達成百分比</th>
+                <th>努力達成中百分比</th>
+                <th>有困難，尚未達成百分比</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- 統計結果將顯示在這裡 -->
+        </tbody>
+    </table>
+
+    <script>
+        let schoolData = [];
+
+        // 處理CSV檔案上傳
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (file && file.name.endsWith(".csv")) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const data = e.target.result;
+                    parseCSV(data);
+                };
+                reader.readAsText(file);
+            } else {
+                alert("請選擇一個CSV檔案！");
+            }
+        }
+
+        // 解析CSV檔案內容
+        function parseCSV(data) {
+            const parsedData = Papa.parse(data, { header: true, skipEmptyLines: true }).data;
+            schoolData = parsedData;
+            
+            // 取得學校名稱
+            const schoolNames = [...new Set(parsedData.map(item => item["學校"]))];
+
+            // 填充下拉選單
+            const schoolSelect = document.getElementById("schoolSelect");
+            schoolSelect.innerHTML = '<option value="">請選擇學校</option>'; // 重置下拉選單
+            schoolNames.forEach(school => {
+                const option = document.createElement("option");
+                option.value = school;
+                option.textContent = school;
+                schoolSelect.appendChild(option);
+            });
+        }
+
+        // 根據選擇的學校顯示統計結果
+        function loadData() {
+            const selectedSchool = document.getElementById("schoolSelect").value;
+            const tableBody = document.getElementById("statisticsTable").getElementsByTagName("tbody")[0];
+            tableBody.innerHTML = "";  // 清空表格
+
+            if (selectedSchool === "") {
+                return; // 若未選擇學校，則不進行處理
+            }
+
+            // 取得選擇學校的資料
+            const schoolRecords = schoolData.filter(item => item["學校"] === selectedSchool);
+
+            // 取得所有指標名稱 (不包括學校欄位)
+            const indicators = Object.keys(schoolRecords[0]).filter(key => key !== "學校");
+
+            // 遍歷每個指標並計算統計結果
+            indicators.forEach(indicator => {
+                let completed = 0;
+                let inProgress = 0;
+                let notCompleted = 0;
+
+                // 計算每個指標的統計數據
+                schoolRecords.forEach(record => {
+                    const status = record[indicator];
+                    if (status === "已達成") completed++;
+                    else if (status === "努力達成中") inProgress++;
+                    else if (status === "有困難，尚未達成") notCompleted++;
+                });
+
+                // 計算百分比
+                const total = schoolRecords.length;
+                const completedPercent = ((completed / total) * 100).toFixed(2);
+                const inProgressPercent = ((inProgress / total) * 100).toFixed(2);
+                const notCompletedPercent = ((notCompleted / total) * 100).toFixed(2);
+
+                // 填充表格
+                const row = tableBody.insertRow();
+                row.insertCell().textContent = indicator;
+                row.insertCell().textContent = completed;
+                row.insertCell().textContent = inProgress;
+                row.insertCell().textContent = notCompleted;
+                row.insertCell().textContent = `${completedPercent}%`;
+                row.insertCell().textContent = `${inProgressPercent}%`;
+                row.insertCell().textContent = `${notCompletedPercent}%`;
+            });
+        }
+    </script>
+
+</body>
+</html>
