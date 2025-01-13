@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>2025新港國小闖關大挑戰</title>
+  <!-- 引入 Bootstrap 5 的 CSS（非必要，但能美化介面） -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+  <style>
+    body {
+      background: #f5f5f5;
+    }
+    .treasure-container {
+      max-width: 650px;
+      margin: 40px auto;
+    }
+    .treasure-card {
+      border-radius: 12px;
+    }
+    .treasure-card-header {
+      font-size: 1.5rem;
+      font-weight: 600;
+      background-color: #007bff;
+      color: #fff;
+      border-top-left-radius: 12px;
+      border-top-right-radius: 12px;
+    }
+    .treasure-card-body {
+      background: #ffffff;
+      border-bottom-left-radius: 12px;
+      border-bottom-right-radius: 12px;
+    }
+    .hint-title {
+      font-weight: bold;
+      font-size: 1.2rem;
+      color: #333;
+    }
+    .message {
+      font-style: italic;
+      margin-top: 8px;
+    }
+    .form-select, 
+    .form-control {
+      max-width: 300px;
+    }
+    .reset-btn {
+      margin-top: 20px;
+      display: flex;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container treasure-container">
+    <div class="card shadow treasure-card">
+      <div class="card-header treasure-card-header text-center">
+        2025新港國小闖關大挑戰
+      </div>
+      <div class="card-body treasure-card-body">
+        <!-- 選擇隊伍（以12個英文單字為隊名） -->
+        <div class="mb-4">
+          <label for="teamSelect" class="form-label">選擇隊伍</label>
+          <select id="teamSelect" class="form-select">
+            <option value="">請選擇</option>
+            <option value="Ant">Ant</option>
+            <option value="Bird">Bird</option>
+            <option value="Cat">Cat</option>
+            <option value="Dog">Dog</option>
+            <option value="Elephant">Elephant</option>
+            <option value="Fish">Fish</option>
+            <option value="Goat">Goat</option>
+            <option value="Horse">Horse</option>
+            <option value="IceCream">IceCream</option>
+            <option value="Juice">Juice</option>
+            <option value="Koala">Koala</option>
+            <option value="Lion">Lion</option>
+          </select>
+        </div>
+
+        <!-- 顯示題目區域（由 JS 動態更新） -->
+        <div id="hintSection" class="alert alert-secondary" style="display: none;">
+          <div class="hint-title mb-2">
+            第 <span id="levelDisplay"></span> 關提示
+          </div>
+          <div id="hintText" class="mb-3"></div>
+          <div class="d-flex align-items-center flex-wrap">
+            <input
+              type="text"
+              id="answerInput"
+              class="form-control me-2 mb-2"
+              placeholder="輸入答案"
+              style="flex: 1;"
+            />
+            <button id="checkAnswerBtn" class="btn btn-primary mb-2">
+              提交答案
+            </button>
+          </div>
+          <div id="message" class="message"></div>
+        </div>
+
+        <!-- 歷程表格：顯示已完成關卡、提示、答案 -->
+        <div id="historySection" style="display: none;">
+          <h5 class="mt-4">已完成關卡歷程</h5>
+          <table class="table table-striped table-bordered" id="historyTable">
+            <thead class="table-light">
+              <tr>
+                <th scope="col" style="width: 20%">關卡 (隊伍順序)</th>
+                <th scope="col" style="width: 40%">題目提示</th>
+                <th scope="col" style="width: 40%">正確答案</th>
+              </tr>
+            </thead>
+            <tbody id="historyTbody">
+              <!-- 由 JS 動態插入 -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 新增重置按鈕 -->
+    <div class="reset-btn">
+      <button id="resetBtn" class="btn btn-danger">重新闖關</button>
+    </div>
+  </div>
+
+  <!-- Bootstrap 5 JS（可選，用於部分元件的互動） -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
+  ></script>
+
+  <script>
+    // 1) 共有 15 關 (index 0~14)
+    const LEVEL_DATA = [
+      { hint: "守護健康的地方，生病了會找我幫忙，猜猜我是什麼？", answer: "5" },
+      { hint: "知識的海洋，有很多書本朋友，愛讀書的人常來找", answer: "解" },
+      { hint: "小小的力量，大大的成功，我的名字藏著「一起努力」，猜我是什麼？", answer: "寒假快樂" },
+      { hint: "保護創意和發明，別人不能隨便用", answer: "2" },
+      { hint: "藏在車裡，危險時會突然出現，像個保護你的大氣球", answer: "4" },
+      { hint: "看不見但可以感受，乾淨時你會舒服，髒時你會咳嗽", answer: "2" },
+      { hint: "我讓糖和水變成一體，消失得無影無蹤", answer: "嘉義市" },
+      { hint: "酸溜溜，廚房裡的調味高手", answer: "箭頭" },
+      { hint: "沒有形狀，能吹動樹葉，也能讓風箏飛上天", answer: "綠" },
+      { hint: "天上金光閃閃，白天陪你玩，夜晚去休息", answer: "HAT" },
+      { hint: "靜靜待在架子上，我是知識的家，翻開我就能學到好多", answer: "87" },
+      { hint: "皮膚是黑白條紋外套，跑得快，但不住在北極，猜我是什麼動物？", answer: "文化街口" },
+      { hint: "三個蛋糕，你分到兩個", answer: "HELP" },
+      { hint: "一個蛋糕切成兩塊，我只拿一塊", answer: "18" },
+      { hint: "數字裡的孤單朋友，不喜歡兩個湊成雙", answer: "開車" },
+    ];
+
+    // 2) 隊伍名稱 (12 隊)
+    const TEAM_NAMES = [
+      "Ant", "Bird", "Cat", "Dog", "Elephant", "Fish",
+      "Goat", "Horse", "IceCream", "Juice", "Koala", "Lion"
+    ];
+
+    // 3) 事先定義好的闖關順序
+    const TEAM_TASK_ORDER = {
+      "Ant": [0, 3, 5, 9, 1, 7, 2, 6, 10, 11, 4, 8],
+      "Bird": [1, 4, 6, 10, 2, 8, 3, 7, 11, 0, 5, 9],
+      "Cat": [2, 5, 7, 11, 3, 9, 4, 8, 0, 1, 6, 10],
+      "Dog": [3, 6, 8, 0, 4, 10, 5, 9, 1, 2, 7, 11],
+      "Elephant": [4, 7, 9, 1, 5, 11, 6, 10, 2, 3, 8, 0],
+      "Fish": [5, 8, 10, 2, 6, 0, 7, 11, 3, 4, 9, 1],
+      "Goat": [6, 9, 11, 3, 7, 1, 8, 0, 4, 5, 10, 2],
+      "Horse": [7, 10, 0, 4, 8, 2, 9, 1, 5, 6, 11, 3],
+      "IceCream": [8, 11, 1, 5, 9, 3, 10, 2, 6, 7, 0, 4],
+      "Juice": [9, 0, 2, 6, 10, 4, 11, 3, 7, 8, 1, 5],
+      "Koala": [10, 1, 3, 7, 11, 5, 0, 4, 8, 9, 2, 6],
+      "Lion": [11, 2, 4, 8, 0, 6, 1, 5, 9, 10, 3, 7]
+    };
+
+    // 修正：隊伍選擇後顯示正確提示與歷程
+    const teamSelect = document.getElementById("teamSelect");
+    const hintSection = document.getElementById("hintSection");
+    const historySection = document.getElementById("historySection");
+    const resetBtn = document.getElementById("resetBtn");
+
+    let progressData = JSON.parse(localStorage.getItem("progressData")) || {};
+    let currentTeam = "";
+
+    teamSelect.addEventListener("change", () => {
+      currentTeam = teamSelect.value;
+
+      if (!currentTeam) {
+        hintSection.style.display = "none";
+        historySection.style.display = "none";
+        return;
+      }
+
+      // 初始化隊伍進度
+      if (!progressData[currentTeam]) {
+        progressData[currentTeam] = 0;
+      }
+
+      hintSection.style.display = "block";
+      historySection.style.display = "block";
+      updateQuestion();
+      renderHistory();
+    });
+
+    resetBtn.addEventListener("click", () => {
+      localStorage.clear();
+      alert("闖關紀錄已清除！");
+      location.reload();
+    });
+
+    function updateQuestion() {
+      const currentPos = progressData[currentTeam];
+
+      if (currentPos >= 12) {
+        hintText.textContent = "恭喜你們已通過12關！";
+        answerInput.style.display = "none";
+        checkAnswerBtn.style.display = "none";
+        return;
+      }
+
+      levelDisplay.textContent = currentPos + 1;
+      hintText.textContent = LEVEL_DATA[TEAM_TASK_ORDER[currentTeam][currentPos]]?.hint || "無題目";
+    }
+
+    function renderHistory() {
+      historyTbody.innerHTML = "";
+      const currentPos = progressData[currentTeam];
+
+      for (let i = 0; i < currentPos; i++) {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${i + 1}</td>
+          <td>${LEVEL_DATA[TEAM_TASK_ORDER[currentTeam][i]]?.hint || ""}</td>
+          <td>${LEVEL_DATA[TEAM_TASK_ORDER[currentTeam][i]]?.answer || ""}</td>
+        `;
+        historyTbody.appendChild(row);
+      }
+    }
+
+    checkAnswerBtn.addEventListener("click", () => {
+      const currentPos = progressData[currentTeam];
+      const correctAnswer = LEVEL_DATA[TEAM_TASK_ORDER[currentTeam][currentPos]]?.answer.toLowerCase();
+      const userAnswer = answerInput.value.trim().toLowerCase();
+
+      if (userAnswer === correctAnswer) {
+        progressData[currentTeam]++;
+        message.textContent = "答對了！進入下一關。";
+        message.style.color = "green";
+        localStorage.setItem("progressData", JSON.stringify(progressData));
+        updateQuestion();
+        renderHistory();
+      } else {
+        message.textContent = "答案錯誤，請再試一次。";
+        message.style.color = "red";
+      }
+
+      answerInput.value = "";
+    });
+  </script>
+</body>
+</html>
