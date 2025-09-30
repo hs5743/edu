@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>可愛中英打字遊戲</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --sky-1: #b3e5ff;
+      --sky-2: #d5f1ff;
+      --candy-1: #ff9ec2;
+      --candy-2: #ffd1dc;
+      --mint-1: #a8f0d6;
+      --mint-2: #bff4e2;
+      --lemon: #fff4a3;
+      --ink: #374151;
+    }
+
+    body { font-family: 'Noto Sans TC', 'Baloo 2', system-ui, -apple-system, sans-serif; touch-action: manipulation; }
+
+    /* 背景：漸層天空 + 漂浮雲朵 */
+    .bg-sky {
+      background: linear-gradient(180deg, var(--sky-1) 0%, var(--sky-2) 60%, #ffffff 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    .float-cloud { position: absolute; opacity: 0.45; filter: blur(0.2px); animation: floatx var(--t, 36s) linear infinite; }
+    .float-cloud svg { display: block; }
+    @keyframes floatx { from { transform: translateX(-20%); } to { transform: translateX(120%); } }
+
+    /* 卡片容器 */
+    .card {
+      background: linear-gradient(180deg, #ffffffcc 0%, #ffffff 100%);
+      backdrop-filter: blur(6px);
+      border: 3px solid #ffffff;
+      box-shadow: 0 20px 50px rgba(31, 41, 55, 0.15), inset 0 2px 0 rgba(255,255,255,.9);
+    }
+
+    /* 標題字體更活潑 */
+    .title { font-family: 'Baloo 2', 'Noto Sans TC', cursive; letter-spacing: .5px; }
+
+    /* 畫布天空外觀 */
+    .game-canvas { cursor: text; border: 4px solid #fff; box-shadow: inset 0 8px 24px rgba(30,64,175,.08); border-radius: 18px; }
+
+    /* 焦點輸入框糖果邊 */
+    .input-field:focus { outline: none; box-shadow: 0 0 0 4px rgba(255, 158, 194, 0.5), 0 8px 20px rgba(0,0,0,.08); border-color: var(--candy-1); }
+
+    /* Modal 背板 */
+    .modal { background-color: rgba(0, 0, 0, 0.55); }
+
+    /* 互動按鈕：果凍彈跳 */
+    .btn-candy { background: linear-gradient(180deg, var(--candy-1), var(--candy-2)); color: #fff; box-shadow: 0 10px 20px rgba(255, 158, 194, .35); }
+    .btn-candy:hover { filter: brightness(1.05); transform: translateY(-1px); }
+    .btn-mint { background: linear-gradient(180deg, #34d399, #6ee7b7); color: #064e3b; box-shadow: 0 10px 20px rgba(110, 231, 183, .35); }
+    .btn-mint:hover { filter: brightness(1.05); transform: translateY(-1px); }
+    .btn-lemon { background: linear-gradient(180deg, #fde047, #facc15); color: #713f12; }
+
+    .jelly { transition: transform .15s ease; }
+    .jelly:active { transform: scale(.98); }
+
+    /* 控制面板微調 */
+    .control-panel label { display:block; margin-bottom:.5rem; color:#4b5563; }
+    .control-panel input[type="range"] { width:100%; }
+
+    /* 可愛徽章（右上角飄帶） */
+    .ribbon { position:absolute; top:12px; right:-40px; background:linear-gradient(135deg, #fecaca, #fde68a); color:#9a3412; padding:6px 60px; font-weight:700; transform:rotate(35deg); box-shadow:0 8px 18px rgba(0,0,0,.12); border:2px dashed rgba(250, 204, 21, .8); }
+
+    /* 手機優化 */
+    @media (max-width: 420px) { .ribbon{ display:none; } }
+  </style>
+</head>
+<body class="bg-sky min-h-screen flex items-center justify-center">
+  <!-- 漂浮雲朵裝飾 -->
+  <div class="float-cloud" style="left:-10%; top:8%; --t:38s">
+    <svg width="180" height="70" viewBox="0 0 180 70" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="40" cy="40" rx="40" ry="28" fill="#fff"/>
+      <ellipse cx="90" cy="28" rx="50" ry="28" fill="#fff"/>
+      <ellipse cx="135" cy="42" rx="45" ry="26" fill="#fff"/>
+    </svg>
+  </div>
+  <div class="float-cloud" style="left:-20%; bottom:12%; --t:52s">
+    <svg width="240" height="90" viewBox="0 0 240 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="50" cy="50" rx="50" ry="30" fill="#fff"/>
+      <ellipse cx="120" cy="35" rx="65" ry="30" fill="#fff"/>
+      <ellipse cx="185" cy="55" rx="55" ry="28" fill="#fff"/>
+    </svg>
+  </div>
+
+  <div id="game-container" class="w-[min(92vw,980px)] mx-auto card rounded-3xl shadow-2xl p-4 sm:p-6 relative overflow-hidden">
+    <span class="ribbon text-sm">Cute ✨ Typing Fun</span>
+    <h1 class="title text-3xl sm:text-4xl font-extrabold text-center text-rose-600 drop-shadow mb-3">
+      🍓 可愛中英打字遊戲
+    </h1>
+    <p class="text-center text-sm sm:text-base text-slate-700 mb-4">可愛無人機帶著詞語飛來啦～快用鍵盤把它們「啾～」掉！(Enter 發射⭐)</p>
+
+    <!-- 遊戲狀態顯示 -->
+    <div class="flex flex-wrap gap-2 justify-between items-center bg-white/70 border border-white rounded-2xl p-3 sm:p-4 mb-4 text-sm sm:text-base">
+      <div class="flex items-center gap-2"><span class="text-pink-500">🏷️</span><strong>等級</strong>：<span id="level">1</span></div>
+      <div class="flex items-center gap-2"><span class="text-yellow-500">⭐</span><strong>分數</strong>：<span id="score">0</span></div>
+      <div class="flex items-center gap-2"><span class="text-blue-500">⏱️</span><strong>時間</strong>：<span id="timer">3:00</span></div>
+      <div class="flex items-center gap-2"><span class="text-rose-500">💥</span><strong>墜毀</strong>：<span id="crashes">0 / 3</span></div>
+      <button id="abort-button" class="ml-auto btn-lemon jelly px-3 py-1.5 rounded-xl text-sm sm:text-base border-2 border-yellow-300">中止並返回 ⬅️</button>
+    </div>
+
+    <!-- 遊戲畫布 -->
+    <canvas id="gameCanvas" class="w-full h-96 sm:h-[520px] bg-gradient-to-b from-sky-200 via-sky-100 to-white game-canvas"></canvas>
+
+    <!-- 輸入區域 -->
+    <div class="mt-3">
+      <input id="text-input" type="text" placeholder="在這裡輸入文字，按 Enter 發射⭐" class="w-full p-3 border-2 border-rose-200 rounded-2xl text-center text-xl transition duration-200 input-field bg-white/90" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" disabled />
+    </div>
+
+    <!-- 開始設定 Modal -->
+    <div id="start-modal" class="absolute inset-0 flex items-center justify-center modal z-10">
+      <div class="bg-white rounded-3xl shadow-2xl w-11/12 max-w-md p-6 border-4 border-pink-200">
+        <div class="flex items-center justify-center mb-3">
+          <div class="w-14 h-14 rounded-full bg-gradient-to-b from-pink-300 to-pink-200 grid place-items-center text-2xl">🧸</div>
+        </div>
+        <h2 class="title text-2xl font-bold text-center text-rose-600 mb-1">準備好了嗎？</h2>
+        <p class="text-slate-600 text-center mb-4">選擇遊戲難度與挑戰時間！</p>
+        <div class="control-panel text-left mb-5">
+          <div>
+            <label for="level-select">關卡主題：</label>
+            <select id="level-select" class="w-full p-3 border-2 border-rose-200 rounded-xl bg-rose-50">
+              <option value="1">等級 1：中文單字 🍡</option>
+              <option value="2">等級 2：中文雙字 🍬</option>
+              <option value="3">等級 3：中文三字 🧋</option>
+              <option value="4">等級 4：中文成語 🍰</option>
+              <option value="5">等級 5：英文單字母 🍪</option>
+              <option value="6">等級 6：英文短詞 (3–4) 🍭</option>
+              <option value="7">等級 7：英文中長詞 (5–7) 🍩</option>
+              <option value="8">等級 8：英文長詞 (8+) 🧁</option>
+              <option value="9">等級 9：中英隨機挑戰 🎲</option>
+              <option value="10">等級 10：自訂練習 ✍️</option>
+            </select>
+          </div>
+          <div class="mt-4">
+            <label for="drone-speed">無人機速度 (慢 → 快)：<span id="drone-speed-value">0.5</span></label>
+            <input id="drone-speed" type="range" min="0.2" max="2" value="0.5" step="0.1" />
+          </div>
+          <div class="mt-4">
+            <label for="spawn-rate">出現頻率 (少 → 多)：<span id="spawn-rate-value">3.0</span>s</label>
+            <input id="spawn-rate" type="range" min="1" max="5" value="3" step="0.2" />
+          </div>
+          <div class="mt-4">
+            <label>挑戰時間：</label>
+            <div class="flex gap-2 flex-wrap">
+              <label class="cursor-pointer">
+                <input type="radio" name="duration" value="60" class="peer sr-only" />
+                <span class="px-3 py-1.5 rounded-xl border-2 border-rose-200 bg-rose-50 text-rose-700 peer-checked:bg-rose-500 peer-checked:text-white peer-checked:border-rose-500">1 分鐘</span>
+              </label>
+              <label class="cursor-pointer">
+                <input type="radio" name="duration" value="120" class="peer sr-only" />
+                <span class="px-3 py-1.5 rounded-xl border-2 border-rose-200 bg-rose-50 text-rose-700 peer-checked:bg-rose-500 peer-checked:text-white peer-checked:border-rose-500">2 分鐘</span>
+              </label>
+              <label class="cursor-pointer">
+                <input type="radio" name="duration" value="180" class="peer sr-only" checked />
+                <span class="px-3 py-1.5 rounded-xl border-2 border-rose-200 bg-rose-50 text-rose-700 peer-checked:bg-rose-500 peer-checked:text-white peer-checked:border-rose-500">3 分鐘</span>
+              </label>
+            </div>
+          </div>
+        </div>
+        <button id="start-button" class="btn-candy jelly w-full font-bold py-3 px-6 rounded-2xl text-xl transition">開始遊戲 ✨</button>
+      </div>
+    </div>
+
+    <!-- 遊戲結束 Modal -->
+    <div id="game-over-modal" class="absolute inset-0 items-center justify-center modal hidden z-10">
+      <div class="bg-white p-8 rounded-3xl shadow-2xl text-center w-11/12 max-w-md border-4 border-yellow-200">
+        <div class="text-5xl mb-2">🎉</div>
+        <h2 class="title text-3xl font-bold mb-2 text-amber-600">遊戲結束！</h2>
+        <p class="text-slate-700 mb-2 text-lg">最終分數：</p>
+        <p id="final-score" class="text-6xl font-extrabold mb-6 text-rose-500 drop-shadow">0</p>
+        <button id="restart-button" class="btn-mint jelly w-full font-bold py-3 px-8 rounded-2xl text-xl transition">再玩一次 ♻️</button>
+      </div>
+    </div>
+
+    <!-- 自訂文字 Modal -->
+    <div id="custom-words-modal" class="absolute inset-0 items-center justify-center modal hidden z-20">
+      <div class="bg-white p-8 rounded-3xl shadow-2xl text-center w-11/12 max-w-lg border-4 border-blue-200">
+        <h2 class="title text-2xl font-bold mb-2 text-blue-600">自訂練習內容</h2>
+        <p class="text-slate-600 mb-4">請輸入想練習的生字語詞，每行一個。</p>
+        <textarea id="custom-words-input" class="w-full h-48 p-3 border-2 border-blue-200 rounded-xl mb-4 focus:outline-none focus:ring-2 focus:ring-blue-300 bg-blue-50" placeholder="例如：&#10;蘋果&#10;banana&#10;持之以恆"></textarea>
+        <div class="flex justify-end gap-3">
+          <button id="cancel-custom-words-button" class="px-5 py-2 rounded-xl border-2 border-slate-300 text-slate-600 bg-white hover:bg-slate-50">取消</button>
+          <button id="save-custom-words-button" class="btn-lemon jelly text-amber-900 font-bold py-2 px-5 rounded-xl">儲存並開始 🍋</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 確認中止 Modal -->
+    <div id="confirm-modal" class="absolute inset-0 hidden items-center justify-center modal z-30">
+      <div class="bg-white p-6 rounded-2xl shadow-xl text-center w-11/12 max-w-sm border-4 border-yellow-200">
+        <p id="confirm-text" class="text-slate-700 mb-4">確定要中止挑戰並返回上一頁嗎？</p>
+        <div class="flex justify-center gap-3">
+          <button id="confirm-yes" class="btn-lemon jelly px-5 py-2 rounded-xl border-2 border-yellow-300">是的，取消並返回</button>
+          <button id="confirm-no" class="px-5 py-2 rounded-xl border-2 border-slate-300 text-slate-600 bg-white hover:bg-slate-50">先不要</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // UI Elements
+    const levelEl = document.getElementById('level');
+    const scoreEl = document.getElementById('score');
+    const timerEl = document.getElementById('timer');
+    const crashesEl = document.getElementById('crashes');
+    const textInput = document.getElementById('text-input');
+    const startModal = document.getElementById('start-modal');
+    const gameOverModal = document.getElementById('game-over-modal');
+    const startButton = document.getElementById('start-button');
+    const restartButton = document.getElementById('restart-button');
+    const finalScoreEl = document.getElementById('final-score');
+    const levelSelect = document.getElementById('level-select');
+    const droneSpeedSlider = document.getElementById('drone-speed');
+    const spawnRateSlider = document.getElementById('spawn-rate');
+    const droneSpeedValueEl = document.getElementById('drone-speed-value');
+    const spawnRateValueEl = document.getElementById('spawn-rate-value');
+    const customWordsModal = document.getElementById('custom-words-modal');
+    const customWordsInput = document.getElementById('custom-words-input');
+    const saveCustomWordsButton = document.getElementById('save-custom-words-button');
+    const cancelCustomWordsButton = document.getElementById('cancel-custom-words-button');
+    const abortButton = document.getElementById('abort-button');
+    const confirmModal = document.getElementById('confirm-modal');
+    const confirmText = document.getElementById('confirm-text');
+    const confirmYes = document.getElementById('confirm-yes');
+    const confirmNo = document.getElementById('confirm-no');
+
+    let gameLoopId, timerId, droneSpawnerId;
+
+    // Sound Effects
+    let missileSound, explosionSound, gameOverSound, crashExplosionSound;
+
+    // 預設 3 分鐘；之後會依選項覆寫
+    const DEFAULT_DURATION = 180;
+
+    let gameState = {
+      score: 0,
+      timeLeft: DEFAULT_DURATION,
+      durationSec: DEFAULT_DURATION,
+      crashes: 0,
+      maxCrashes: 3,
+      level: 1,
+      droneSpeed: 0.5,
+      spawnRate: 3000, // in ms
+      active: false,
+    };
+
+    let clouds = [];
+    let drones = [];
+    let missiles = [];
+    let explosions = [];
+    let confetti = [];
+    let dartTrails = [];
+
+    // 丟鏢動畫狀態
+    let throwAnim = { active: false, p: 0 }; // p: 0→1 進度
+
+    // 關卡設定
+    const levels = {
+      1: ['天','地','人','你','我','他','山','水','火','木','金','日','月','星','風','雨','雷','電','上','下','左','右','前','後','東','西','南','北','中','發'],
+      2: ['你好','謝謝','台灣','台北','電腦','手機','遊戲','學習','程式','未來','快樂','成功','天氣','吃飯','朋友','學校','老師','同學','運動','健康','音樂','電影','旅遊','美食','家人','寵物','希望','夢想','努力','加油'],
+      3: ['沒問題','為什麼','怎麼辦','你好嗎','我愛你','真的嗎','太好了','不客氣','對不起','沒關係','辛苦了','逛夜市','看電影','喝珍奶','寫作業','打籃球','聽音樂','去旅行','吃早餐','睡午覺','上網路','玩遊戲','交朋友','學中文','很開心','不知道','等一下','歡迎你','祝你好運','一路順風'],
+      4: ['一見鍾情','心想事成','萬事如意','平步青雲','百花齊放','千變萬化','畫龍點睛','車水馬龍','風和日麗','鳥語花香','一心一意','三心二意','五花八門','七上八下','九牛一毛','十全十美','自由自在','無憂無慮','大開眼界','得心應手','飲水思源','守株待兔','亡羊補牢','井底之蛙','狐假虎威','畫蛇添足','驚弓之鳥','對牛彈琴','掩耳盜鈴','自相矛盾'],
+      5: ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z'],
+      6: ['run','sun','cat','dog','pen','box','key','cup','hat','map','bus','car','fly','sky','try','egg','jam','ice','fan','bed','leg','arm','lip','eye','ear','ant','bee','cow','fox','pig'],
+      7: ['apple','banana','orange','grape','lemon','melon','peach','water','earth','happy','smile','dream','music','style','power','magic','light','sound','color','shape','space','cloud','green','white','black','brown','friend','family','school','world'],
+      8: ['computer','keyboard','internet','program','language','challenge','success','beautiful','wonderful','important','technology','information','adventure','experience','knowledge','education','development','environment','celebration','imagination'],
+      9: [],
+      10: []
+    };
+    levels[9] = [...levels[1], ...levels[2], ...levels[3], ...levels[4], ...levels[6], ...levels[7], ...levels[8]];
+
+    const levelDisplayNames = { 9: '隨機', 10: '自訂' };
+
+    function resizeCanvas() { canvas.width = canvas.clientWidth; canvas.height = canvas.clientHeight; }
+    window.addEventListener('resize', resizeCanvas);
+
+    // === 可愛背景雲 ===
+    function initClouds() {
+      clouds = Array.from({ length: 6 }, () => ({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height * 0.6,
+        r: 18 + Math.random() * 22,
+        vx: 0.2 + Math.random() * 0.4,
+        a: 0.2 + Math.random() * 0.2,
+      }));
+    }
+    function drawCuteClouds() {
+      clouds.forEach(c => {
+        c.x += c.vx; if (c.x - c.r * 3 > canvas.width) c.x = -c.r * 3;
+        ctx.save(); ctx.globalAlpha = c.a; ctx.fillStyle = '#ffffff';
+        ctx.beginPath(); ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+        ctx.arc(c.x + c.r, c.y + 6, c.r * 0.9, 0, Math.PI * 2);
+        ctx.arc(c.x - c.r * 0.8, c.y + 8, c.r * 0.8, 0, Math.PI * 2);
+        ctx.fill(); ctx.restore();
+      });
+    }
+
+    // === 繪圖：小雲寶（無人機） ===
+    function drawDrones() {
+      drones.forEach(drone => {
+        ctx.save(); ctx.translate(drone.x, drone.y);
+        const R = 22; ctx.fillStyle = '#fff'; ctx.strokeStyle = '#fcd34d'; ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, R, 0, Math.PI * 2);
+        ctx.arc(-R * 0.7, 4, R * 0.7, 0, Math.PI * 2);
+        ctx.arc(R * 0.8, 5, R * 0.8, 0, Math.PI * 2);
+        ctx.fill(); ctx.stroke();
+
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#111827';
+        ctx.beginPath(); ctx.arc(-8, -2, 2.5, 0, Math.PI * 2); ctx.arc(8, -2, 2.5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(255, 159, 171, .8)'; ctx.beginPath(); ctx.arc(-12, 4, 3.2, 0, Math.PI * 2); ctx.arc(12, 4, 3.2, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.arc(0, 2, 3, 0, Math.PI, false); ctx.stroke();
+
+        ctx.fillStyle = '#1f2937'; ctx.font = '700 16px "Noto Sans TC"'; ctx.fillText(drone.text, 0, -R - 14);
+
+        if (drone.isTargeted) {
+          const t = Date.now() / 180; const pulse = 0.6 + Math.sin(t) * 0.4;
+          ctx.strokeStyle = `rgba(244, 63, 94, ${0.7 * pulse})`; ctx.lineWidth = 3;
+          ctx.beginPath(); ctx.arc(0, 0, R + 6, 0, Math.PI * 2); ctx.stroke();
+        }
+        ctx.restore();
+      });
+    }
+
+    // === 飛鏢（含拖尾） ===
+    function drawMissiles() {
+      missiles.forEach(missile => {
+        ctx.save(); ctx.translate(missile.x, missile.y);
+        if (missile.target) { const dx = missile.target.x - missile.x; const dy = missile.target.y - missile.y; ctx.rotate(Math.atan2(dy, dx)); }
+        drawDartShape(0, 0, 1.2);
+        ctx.restore();
+      });
+    }
+    function drawTrails() {
+      dartTrails.forEach(p => {
+        ctx.globalAlpha = p.a; ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
+      });
+    }
+
+    // === 可愛爆炸（愛心/糖粉） ===
+    function drawExplosions() {
+      explosions.forEach(explosion => {
+        ctx.save(); ctx.globalAlpha = explosion.alpha; ctx.translate(explosion.x, explosion.y);
+        heartPath(0, 0, explosion.radius); ctx.fillStyle = 'rgba(255, 99, 132, .65)'; ctx.fill();
+        ctx.restore();
+      });
+      confetti.forEach((p) => { ctx.globalAlpha = p.a; ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; });
+    }
+    function heartPath(x, y, s) {
+      ctx.beginPath(); ctx.moveTo(x, y);
+      ctx.bezierCurveTo(x - s, y - s, x - s * 1.2, y + s * 0.4, x, y + s);
+      ctx.bezierCurveTo(x + s * 1.2, y + s * 0.4, x + s, y - s, x, y);
+      ctx.closePath();
+    }
+
+    // === 角色（丟鏢動畫） ===
+    function drawThrower() {
+      const x = canvas.width / 2, y = canvas.height; // 角色底部中央
+      ctx.save(); ctx.translate(x, y);
+      // 頭
+      ctx.fillStyle = '#fde68a'; ctx.beginPath(); ctx.arc(0, -42, 16, 0, Math.PI * 2); ctx.fill();
+      // 臉
+      ctx.fillStyle = '#111827'; ctx.beginPath(); ctx.arc(-5, -45, 2, 0, Math.PI * 2); ctx.arc(5, -45, 2, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(0, -40, 3, 0, Math.PI, false); ctx.stroke();
+      // 身體
+      ctx.fillStyle = '#fca5a5'; ctx.fillRect(-8, -28, 16, 20);
+      // 手臂角度（丟出→收回）
+      const swing = Math.sin(throwAnim.p * Math.PI) * 0.9; // 0→1→0
+      const armAngle = -0.6 - swing; // 基礎抬手 -0.6，再往上揮
+      ctx.save(); ctx.translate(8, -18); ctx.rotate(armAngle);
+      ctx.fillRect(0, 0, 14, 5);
+      ctx.translate(14, 2.5); drawDartShape(0, 0, 1);
+      ctx.restore();
+      // 腿
+      ctx.fillStyle = '#60a5fa'; ctx.fillRect(-10, -8, 8, 10); ctx.fillRect(2, -8, 8, 10);
+      ctx.restore();
+    }
+
+    function drawDartShape(cx, cy, scale = 1) {
+      ctx.save(); ctx.translate(cx, cy); ctx.scale(scale, scale);
+      ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(10, -3); ctx.lineTo(10, 3); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#374151'; ctx.fillRect(0, -1.2, 10, 2.4);
+      ctx.fillStyle = '#60a5fa'; ctx.beginPath(); ctx.moveTo(-4, -3); ctx.lineTo(0, -1); ctx.lineTo(0, 1); ctx.lineTo(-4, 3); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+
+    function updateThrowerAnim() {
+      if (!throwAnim.active) return; throwAnim.p += 0.15; if (throwAnim.p >= 1) { throwAnim.active = false; throwAnim.p = 0; }
+    }
+
+    // === 更新 ===
+    function updateDrones() {
+      drones.forEach((drone, index) => {
+        drone.y += gameState.droneSpeed; drone.propellerAngle += 0.5;
+        if (drone.y > canvas.height) {
+          drones.splice(index, 1); gameState.crashes++; updateUI(); createExplosion(drone.x, canvas.height, true);
+          if (crashExplosionSound) { crashExplosionSound.triggerAttackRelease('0.8', Tone.now()); }
+          if (gameState.crashes >= gameState.maxCrashes) endGame();
+        }
+      });
+    }
+
+    function updateMissiles() {
+      missiles.forEach((missile, index) => {
+        const target = missile.target; const dx = target.x - missile.x; const dy = target.y - missile.y; const dist = Math.hypot(dx, dy);
+        if (dist < 10 || !drones.includes(target)) {
+          createExplosion(target.x, target.y);
+          if (drones.includes(target)) {
+            explosionSound.triggerAttackRelease('0.3', Tone.now());
+            gameState.score += target.text.length * 10; updateUI();
+            drones = drones.filter(d => d !== target);
+            sprinkleConfetti(target.x, target.y);
+          }
+          missiles.splice(index, 1);
+        } else {
+          // 產生拖尾粒子（沿反方向散開）
+          const ux = dx / dist, uy = dy / dist;
+          dartTrails.push({ x: missile.x, y: missile.y, vx: -ux * (0.5 + Math.random()), vy: -uy * (0.5 + Math.random()), r: 2 + Math.random() * 2, a: 0.8, c: ['#fda4af','#fdba74','#93c5fd'][Math.floor(Math.random()*3)] });
+          missile.x += ux * 8; missile.y += uy * 8;
+        }
+      });
+    }
+
+    function updateTrails() {
+      dartTrails.forEach((p, i) => { p.x += p.vx; p.y += p.vy; p.a -= 0.03; p.r *= 0.985; if (p.a <= 0.02) dartTrails.splice(i, 1); });
+    }
+
+    function updateExplosions() {
+      explosions.forEach((e, i) => { e.radius += 1.4; e.alpha -= 0.025; if (e.alpha <= 0) explosions.splice(i, 1); });
+      confetti.forEach((p, i) => { p.y += p.vy; p.x += p.vx; p.a -= 0.02; if (p.a <= 0) confetti.splice(i, 1); });
+    }
+
+    function spawnDrone() {
+      const list = levels[gameState.level]; if (!list || list.length === 0) return;
+      const text = list[Math.floor(Math.random() * list.length)];
+      const tw = 40;
+      drones.push({ text, x: Math.random() * (canvas.width - tw - 20) + tw / 2 + 10, y: -34, isTargeted: false, propellerAngle: 0 });
+    }
+
+    function createExplosion(x, y, isCrash = false) { explosions.push({ x, y, radius: isCrash ? 12 : 8, alpha: 1 }); }
+
+    function sprinkleConfetti(x, y) { for (let i = 0; i < 14; i++) { confetti.push({ x, y, r: 2 + Math.random() * 3, vx: (Math.random() - 0.5) * 2, vy: -1 - Math.random() * 2, a: 0.9, c: ['#fda4af','#fdba74','#fef08a','#86efac','#93c5fd'][Math.floor(Math.random()*5)] }); } }
+
+    // ---- 通用確認框（避免瀏覽器封鎖 window.confirm） ----
+    function uiConfirm(message, onYes) {
+      if (!confirmModal) { onYes(); return; }
+      confirmText.textContent = message || '確定嗎？';
+      confirmModal.classList.remove('hidden');
+      confirmModal.classList.add('flex');
+      const cleanup = () => {
+        confirmModal.classList.add('hidden');
+        confirmModal.classList.remove('flex');
+        confirmYes.removeEventListener('click', onYesWrapped);
+        confirmNo.removeEventListener('click', cleanup);
+      };
+      const onYesWrapped = () => { cleanup(); onYes(); };
+      confirmYes.addEventListener('click', onYesWrapped);
+      confirmNo.addEventListener('click', cleanup);
+    }
+
+    // === 遊戲迴圈 ===
+    function gameLoop() {
+      if (!gameState.active) return; ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawCuteClouds();
+      updateThrowerAnim(); updateDrones(); updateMissiles(); updateTrails(); updateExplosions();
+      drawThrower(); drawDrones(); drawTrails(); drawMissiles(); drawExplosions();
+      gameLoopId = requestAnimationFrame(gameLoop);
+    }
+
+    // === 音效 ===
+    function setupSounds() {
+      missileSound = new Tone.Synth({ oscillator: { type: 'triangle' }, envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.2 } }).toDestination();
+      explosionSound = new Tone.NoiseSynth({ noise: { type: 'white' }, envelope: { attack: 0.005, decay: 0.3, sustain: 0 } }).toDestination();
+      crashExplosionSound = new Tone.NoiseSynth({ noise: { type: 'brown' }, envelope: { attack: 0.05, decay: 0.8, sustain: 0.1 } }).toDestination();
+      crashExplosionSound.volume.value = 3; gameOverSound = new Tone.Synth().toDestination();
+    }
+
+    function getSelectedDuration() {
+      const el = document.querySelector('input[name="duration"]:checked');
+      const val = el ? parseInt(el.value, 10) : DEFAULT_DURATION;
+      return ([60, 120, 180].includes(val)) ? val : DEFAULT_DURATION;
+    }
+
+    function init() {
+      resizeCanvas(); initClouds(); updateSettingsUI();
+      startButton.addEventListener('click', async () => { await Tone.start(); setupSounds(); if (levelSelect.value === '10') { startModal.classList.add('hidden'); startModal.classList.remove('flex'); customWordsModal.classList.remove('hidden'); customWordsModal.classList.add('flex'); customWordsInput.focus(); } else { startGame(); } });
+      restartButton.addEventListener('click', () => { gameOverModal.classList.add('hidden'); gameOverModal.classList.remove('flex'); startModal.classList.remove('hidden'); startModal.classList.add('flex'); });
+      textInput.addEventListener('keydown', handleInput);
+      saveCustomWordsButton.addEventListener('click', () => { const words = customWordsInput.value.trim().split('\n').map(w => w.trim()).filter(w => w.length > 0); if (words.length === 0) { customWordsInput.value = ''; customWordsInput.placeholder = '請至少輸入一個詞！'; return; } levels[10] = words; customWordsModal.classList.add('hidden'); customWordsModal.classList.remove('flex'); startGame(); });
+      cancelCustomWordsButton.addEventListener('click', () => { customWordsModal.classList.add('hidden'); customWordsModal.classList.remove('flex'); startModal.classList.remove('hidden'); startModal.classList.add('flex'); });
+      abortButton.addEventListener('click', abortAndBack);
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && gameState.active) abortAndBack(); });
+      droneSpeedSlider.addEventListener('input', (e) => { droneSpeedValueEl.textContent = parseFloat(e.target.value).toFixed(1); });
+      spawnRateSlider.addEventListener('input', (e) => { spawnRateValueEl.textContent = (6 - parseFloat(e.target.value)).toFixed(1); });
+      runSelfTests();
+    }
+
+    function startGame() {
+      // 先依選擇設定挑戰時間
+      gameState.durationSec = getSelectedDuration();
+      resetGameState();
+      gameState.level = parseInt(levelSelect.value, 10);
+      gameState.droneSpeed = parseFloat(droneSpeedSlider.value);
+      gameState.spawnRate = (6 - parseFloat(spawnRateSlider.value)) * 1000;
+      initClouds(); gameState.active = true; updateUI();
+      startModal.classList.add('hidden'); startModal.classList.remove('flex');
+      textInput.disabled = false; textInput.focus();
+      timerId = setInterval(updateTimer, 1000); droneSpawnerId = setInterval(spawnDrone, gameState.spawnRate);
+      gameLoop();
+    }
+
+    function endGame() {
+      gameState.active = false; clearInterval(timerId); clearInterval(droneSpawnerId); cancelAnimationFrame(gameLoopId);
+      const now = Tone.now(); gameOverSound.triggerAttackRelease('C4', '8n', now); gameOverSound.triggerAttackRelease('G3', '8n', now + 0.2); gameOverSound.triggerAttackRelease('E3', '4n', now + 0.4);
+      textInput.disabled = true; textInput.value = '';
+      finalScoreEl.textContent = gameState.score; gameOverModal.classList.remove('hidden'); gameOverModal.classList.add('flex');
+    }
+
+    // 中止（不觸發遊戲結束視窗）
+    function stopGameSilently() { gameState.active = false; clearInterval(timerId); clearInterval(droneSpawnerId); cancelAnimationFrame(gameLoopId); textInput.disabled = true; textInput.value = ''; }
+
+    // 重置狀態（用於中止返回 & 開始新遊戲前）
+    function resetGameState() {
+      gameState.score = 0; gameState.timeLeft = gameState.durationSec; gameState.crashes = 0;
+      missiles = []; explosions = []; confetti = []; dartTrails = []; drones = [];
+      throwAnim = { active: false, p: 0 };
+      updateUI();
+    }
+
+    function goBackOrHome() {
+      // 先回到開始畫面，確保使用者看到明確回饋
+      startModal.classList.remove('hidden');
+      startModal.classList.add('flex');
+      gameOverModal.classList.add('hidden');
+      gameOverModal.classList.remove('flex');
+      // 再嘗試回上一頁（若在可導航環境）
+      try {
+        if (document.referrer && document.referrer !== location.href) {
+          setTimeout(() => window.history.back(), 120);
+        }
+      } catch(_) { /* 忽略 */ }
+    }
+
+    function abortAndBack() {
+      const doAbort = () => { stopGameSilently(); resetGameState(); goBackOrHome(); };
+      // 使用自訂確認框，避免某些環境下 window.confirm 沒反應
+      uiConfirm('確定要中止挑戰並返回上一頁嗎？', doAbort);
+    }
+
+    function updateUI() { levelEl.textContent = levelDisplayNames[gameState.level] || gameState.level; scoreEl.textContent = gameState.score; crashesEl.textContent = `${gameState.crashes} / ${gameState.maxCrashes}`; const m = Math.floor(gameState.timeLeft / 60), s = gameState.timeLeft % 60; timerEl.textContent = `${m}:${s.toString().padStart(2, '0')}`; }
+    function updateSettingsUI() { droneSpeedValueEl.textContent = parseFloat(droneSpeedSlider.value).toFixed(1); spawnRateValueEl.textContent = (6 - parseFloat(spawnRateSlider.value)).toFixed(1); }
+    function updateTimer() { gameState.timeLeft--; updateUI(); if (gameState.timeLeft <= 0) endGame(); }
+
+    function handleInput(e) {
+      if (e.key === 'Enter' && textInput.value.trim() !== '') {
+        const inputText = textInput.value.trim();
+        const targetDrone = drones.slice().reverse().find(d => d.text.toLowerCase() === inputText.toLowerCase() && !d.isTargeted);
+        if (targetDrone) {
+          targetDrone.isTargeted = true; missiles.push({ x: canvas.width / 2, y: canvas.height - 40, target: targetDrone });
+          // 丟鏢動畫啟動
+          throwAnim.active = true; throwAnim.p = 0;
+          const now = Tone.now(); missileSound.triggerAttack('C5', now); missileSound.frequency.rampTo('G5', 0.2, now); missileSound.triggerRelease(now + 0.2);
+        }
+        textInput.value = '';
+      }
+    }
+
+    // —— 自動測試 ——
+    function runSelfTests() {
+      try {
+        console.group('%cPuti-AI Self Tests','color:#2563eb');
+        // 存在性測試
+        console.assert(typeof drawThrower === 'function', 'drawThrower 存在');
+        console.assert(typeof drawMissiles === 'function', 'drawMissiles 存在');
+        console.assert(typeof abortAndBack === 'function', 'abortAndBack 存在');
+        console.assert(typeof goBackOrHome === 'function', 'goBackOrHome 存在');
+        console.assert(typeof uiConfirm === 'function', 'uiConfirm 存在');
+        console.assert(typeof getSelectedDuration === 'function', 'getSelectedDuration 存在');
+        console.assert(Array.isArray(levels[1]) && levels[1].length > 0, 'levels[1] 有資料');
+        console.assert(document.getElementById('abort-button'), '#abort-button 存在');
+        console.assert(document.getElementById('start-modal'), '#start-modal 存在');
+        console.assert(document.getElementById('confirm-modal'), '#confirm-modal 存在');
+        
+        // 重置測試：reset 會使用 gameState.durationSec
+        const prevDur = gameState.durationSec;
+        gameState.durationSec = 120; // 2 分鐘
+        gameState.score = 999; gameState.timeLeft = 42; gameState.crashes = 2; missiles.push({x:0,y:0});
+        resetGameState();
+        console.assert(gameState.timeLeft === 120, 'resetGameState 依據 durationSec 重置時間');
+        console.assert(gameState.score === 0 && gameState.crashes === 0, 'resetGameState 重置分數與墜毀');
+        console.assert(missiles.length === 0 && explosions.length === 0 && drones.length === 0, 'resetGameState 清空陣列');
+        gameState.durationSec = prevDur;
+
+        // getSelectedDuration 測試
+        const d60 = document.querySelector('input[name="duration"][value="60"]');
+        const d120 = document.querySelector('input[name="duration"][value="120"]');
+        const d180 = document.querySelector('input[name="duration"][value="180"]');
+        if (d60 && d120 && d180) {
+          d60.checked = true; console.assert(getSelectedDuration() === 60, 'getSelectedDuration 60');
+          d120.checked = true; console.assert(getSelectedDuration() === 120, 'getSelectedDuration 120');
+          d180.checked = true; console.assert(getSelectedDuration() === 180, 'getSelectedDuration 180 (預設)');
+        }
+
+        // 動畫測試（不進入遊戲迴圈）
+        throwAnim.active = true; throwAnim.p = 0; for (let i=0;i<8;i++) updateThrowerAnim(); console.assert(throwAnim.p > 0, 'updateThrowerAnim 運作');
+        console.log('Self tests OK');
+      } catch (e) { console.error('Self tests failed:', e); }
+      finally { console.groupEnd(); }
+    }
+
+    init();
+  </script>
+</body>
+</html>
