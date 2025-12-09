@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>健康校園迷宮尋寶</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Microsoft JhengHei', sans-serif; background-color: #87CEEB; }
+        #game-container { width: 100vw; height: 100vh; display: block; }
+        
+        /* UI Overlay */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        /* Top HUD */
+        #hud-top {
+            display: flex;
+            justify-content: space-between;
+            padding: 20px;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent);
+            color: white;
+        }
+
+        #stats {
+            font-size: 1.2rem;
+            text-shadow: 2px 2px 2px #000;
+        }
+
+        #mini-map-container {
+            width: 150px;
+            height: 150px;
+            border: 4px solid #fff;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #mini-map {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Instructions */
+        #instructions {
+            position: absolute;
+            bottom: 150px; /* 移高一點，避開觸控按鈕 */
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            text-align: center;
+            text-shadow: 2px 2px 4px #000;
+            font-size: 1.2rem;
+            background-color: rgba(0,0,0,0.5);
+            padding: 10px 20px;
+            border-radius: 20px;
+        }
+
+        /* Mobile Controls */
+        #mobile-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            width: 100%;
+            height: 180px;
+            pointer-events: none; /* 讓點擊穿透空白處 */
+            display: flex;
+            justify-content: space-between;
+            padding: 0 40px;
+            box-sizing: border-box;
+            z-index: 10;
+        }
+
+        .control-group {
+            pointer-events: auto; /* 按鈕區域恢復點擊 */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #d-pad {
+            position: relative;
+            width: 180px;
+            height: 180px;
+        }
+
+        .ctrl-btn {
+            background-color: rgba(255, 255, 255, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            border-radius: 15px;
+            color: white;
+            font-size: 24px;
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            user-select: none;
+            -webkit-user-select: none; /* Safari */
+            touch-action: manipulation;
+            backdrop-filter: blur(4px);
+            transition: background 0.1s;
+        }
+
+        .ctrl-btn:active, .ctrl-btn.active {
+            background-color: rgba(76, 175, 80, 0.8);
+            transform: scale(0.95);
+        }
+
+        #btn-up { top: 0; left: 60px; }
+        #btn-down { bottom: 0; left: 60px; }
+        #btn-left { top: 60px; left: 0; }
+        #btn-right { top: 60px; right: 0; }
+
+        #action-btn {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background-color: rgba(255, 215, 0, 0.4);
+            border: 4px solid rgba(255, 215, 0, 0.8);
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            pointer-events: auto;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        #action-btn:active {
+            background-color: rgba(255, 215, 0, 0.8);
+            transform: scale(0.95);
+        }
+
+        /* Interaction Message */
+        #message-box {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 20px 40px;
+            border-radius: 15px;
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #333;
+            border: 4px solid #4CAF50;
+            display: none;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            pointer-events: auto;
+        }
+
+        .item-icon { margin-right: 5px; }
+        .collected { color: #4CAF50; font-weight: bold; }
+        .key-text { color: #FFD700; font-weight: bold; }
+
+        /* Start Screen */
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            z-index: 100;
+            pointer-events: auto;
+        }
+        
+        button {
+            padding: 15px 30px;
+            font-size: 1.5rem;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: transform 0.2s;
+        }
+        button:hover { transform: scale(1.05); background-color: #45a049; }
+
+        /* 平板橫向優化 */
+        @media (max-width: 800px) {
+            #mobile-controls {
+                padding: 0 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container"></div>
+
+    <div id="ui-layer">
+        <div id="hud-top">
+            <div id="stats">
+                <div>目標：蒐集 3 個運動器材與 1 把鑰匙</div>
+                <div id="inventory-list">
+                    器材：<span id="score">0</span> / 3<br>
+                    鑰匙：<span id="has-key" style="color:red">未取得</span>
+                </div>
+            </div>
+            <div id="mini-map-container">
+                <canvas id="mini-map" width="150" height="150"></canvas>
+            </div>
+        </div>
+        
+        <div id="instructions">
+            使用 ⬆️⬇️⬅️➡️ 或 WASD 移動<br>靠近寶箱按空白鍵 [SPACE] 或點擊右下角按鈕
+        </div>
+
+        <!-- 觸控按鈕區 -->
+        <div id="mobile-controls">
+            <div class="control-group" id="d-pad">
+                <div class="ctrl-btn" id="btn-up">▲</div>
+                <div class="ctrl-btn" id="btn-left">◀</div>
+                <div class="ctrl-btn" id="btn-right">▶</div>
+                <div class="ctrl-btn" id="btn-down">▼</div>
+            </div>
+            <div class="control-group">
+                <div id="action-btn">🖐️ 開啟</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="message-box">
+        <div id="msg-content">獲得物品！</div>
+        <button onclick="closeMessage()">繼續探索</button>
+    </div>
+
+    <div id="start-screen">
+        <h1>🏃 健康校園迷宮尋寶 🏃</h1>
+        <p style="font-size: 1.2rem; max-width: 600px; text-align: center; line-height: 1.6;">
+            歡迎來到健康迷宮！你需要找到散落在迷宮中的<b>運動器材</b>（籃球、水壺、啞鈴）來增強體力，並找到<b>黃金鑰匙</b>才能打開校園大門離開。<br><br>
+            觀察右上角的小地圖，不要迷路囉！
+        </p>
+        <button id="start-btn">開始冒險</button>
+    </div>
+
+    <script>
+        // --- 遊戲設定 ---
+        const MAZE_SIZE = 15; // 迷宮大小 (奇數)
+        const CELL_SIZE = 40; // 每個格子的 3D 尺寸
+        const WALL_HEIGHT = 40;
+        const PLAYER_SPEED = 2.0;
+        const ROTATION_SPEED = 0.04;
+        const INTERACTION_DIST = 30; // 稍微增加互動距離
+
+        // --- 全域變數 ---
+        let scene, camera, renderer;
+        let maze = [];
+        let walls = []; // 儲存牆壁 Mesh 用於碰撞
+        let player = { x: 0, z: 0, rotation: 0, dirX: 0, dirZ: 1 };
+        let objects = []; // 寶箱與終點
+        let itemsCollected = 0;
+        let hasKey = false;
+        let isGameActive = false;
+        
+        // 運動器材清單
+        const ITEMS = [
+            { name: "籃球", color: 0xff6600, type: 'sphere' },
+            { name: "運動水壺", color: 0x0000ff, type: 'cylinder' },
+            { name: "啞鈴", color: 0x555555, type: 'dumbbell' }
+        ];
+        
+        // --- 初始化 Three.js ---
+        function init() {
+            const container = document.getElementById('game-container');
+            
+            // 場景
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87CEEB); // 天空藍
+            scene.fog = new THREE.Fog(0x87CEEB, 20, 300);
+
+            // 攝影機 (第一人稱)
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+
+            // 渲染器
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            // 燈光
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.7);
+            dirLight.position.set(100, 200, 100);
+            dirLight.castShadow = true;
+            scene.add(dirLight);
+
+            // 玩家手電筒 (讓迷宮不要太暗)
+            const pointLight = new THREE.PointLight(0xffaa00, 0.5, 100);
+            camera.add(pointLight);
+            scene.add(camera);
+
+            // 地板
+            createFloor();
+
+            // 生成迷宮與牆壁
+            generateMaze(MAZE_SIZE, MAZE_SIZE);
+            buildMaze3D();
+
+            // 放置物件
+            placeObjects();
+
+            // 事件監聽
+            window.addEventListener('resize', onWindowResize);
+            document.addEventListener('keydown', onKeyDown);
+            document.addEventListener('keyup', onKeyUp);
+            document.getElementById('start-btn').addEventListener('click', startGame);
+
+            // 觸控按鈕監聽
+            setupTouchControls();
+
+            // 遊戲迴圈
+            animate();
+        }
+
+        // --- 觸控控制設定 ---
+        function setupTouchControls() {
+            const bindTouch = (id, key) => {
+                const btn = document.getElementById(id);
+                // 使用 touchstart/touchend 支援多點觸控
+                btn.addEventListener('touchstart', (e) => { 
+                    e.preventDefault(); 
+                    keys[key] = true; 
+                    btn.classList.add('active');
+                }, {passive: false});
+                
+                btn.addEventListener('touchend', (e) => { 
+                    e.preventDefault(); 
+                    keys[key] = false; 
+                    btn.classList.remove('active');
+                }, {passive: false});
+
+                // 滑鼠支援 (方便電腦測試)
+                btn.addEventListener('mousedown', () => { keys[key] = true; btn.classList.add('active'); });
+                btn.addEventListener('mouseup', () => { keys[key] = false; btn.classList.remove('active'); });
+                btn.addEventListener('mouseleave', () => { keys[key] = false; btn.classList.remove('active'); });
+            };
+
+            bindTouch('btn-up', 'w');
+            bindTouch('btn-down', 's');
+            bindTouch('btn-left', 'a');
+            bindTouch('btn-right', 'd');
+
+            const actionBtn = document.getElementById('action-btn');
+            actionBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                handleInteraction();
+                actionBtn.style.transform = "scale(0.9)";
+                setTimeout(() => actionBtn.style.transform = "scale(1)", 100);
+            }, {passive: false});
+            
+            actionBtn.addEventListener('click', () => handleInteraction()); // 電腦點擊
+        }
+
+        // --- 迷宮演算法 (遞歸回溯 Recursive Backtracker) ---
+        function generateMaze(width, height) {
+            // 初始化全為牆 (1)
+            maze = Array(height).fill().map(() => Array(width).fill(1));
+            
+            // 其實點 (1,1)
+            const startX = 1;
+            const startY = 1;
+            maze[startY][startX] = 0;
+            
+            const stack = [{x: startX, y: startY}];
+            const directions = [[0, -2], [0, 2], [-2, 0], [2, 0]]; // 上下左右跳兩格
+
+            while (stack.length > 0) {
+                const current = stack[stack.length - 1];
+                const neighbors = [];
+
+                for (let dir of directions) {
+                    const nx = current.x + dir[0];
+                    const ny = current.y + dir[1];
+                    
+                    if (nx > 0 && nx < width - 1 && ny > 0 && ny < height - 1 && maze[ny][nx] === 1) {
+                        neighbors.push({x: nx, y: ny, dx: dir[0] / 2, dy: dir[1] / 2});
+                    }
+                }
+
+                if (neighbors.length > 0) {
+                    const next = neighbors[Math.floor(Math.random() * neighbors.length)];
+                    maze[next.y][next.x] = 0; // 打通目標點
+                    maze[current.y + next.dy][current.x + next.dx] = 0; // 打通中間牆
+                    stack.push({x: next.x, y: next.y});
+                } else {
+                    stack.pop();
+                }
+            }
+
+            // 確保起點和隨機位置是空的，便於放置玩家
+            // 修正：加上 CELL_SIZE / 2 使玩家位於格子正中心
+            player.x = 1 * CELL_SIZE + CELL_SIZE / 2;
+            player.z = 1 * CELL_SIZE + CELL_SIZE / 2;
+        }
+
+        // --- 紋理生成器 (無需外部圖片) ---
+        function createBrickTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#d2691e'; // 磚塊底色
+            ctx.fillRect(0, 0, 64, 64);
+            ctx.strokeStyle = '#8b4513';
+            ctx.lineWidth = 3;
+            // 畫磚縫
+            ctx.beginPath();
+            ctx.moveTo(0, 32); ctx.lineTo(64, 32);
+            ctx.moveTo(32, 0); ctx.lineTo(32, 32);
+            ctx.moveTo(0, 0); ctx.lineTo(64, 0); ctx.lineTo(64, 64); ctx.lineTo(0, 64); ctx.lineTo(0,0);
+            ctx.stroke();
+            
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.magFilter = THREE.NearestFilter;
+            return tex;
+        }
+
+        function createFloor() {
+            const geometry = new THREE.PlaneGeometry(MAZE_SIZE * CELL_SIZE * 2, MAZE_SIZE * CELL_SIZE * 2);
+            
+            // 草地紋理
+            const canvas = document.createElement('canvas');
+            canvas.width = 64; canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#4CAF50';
+            ctx.fillRect(0,0,64,64);
+            ctx.fillStyle = '#388E3C'; // 雜草點綴
+            for(let i=0; i<20; i++) ctx.fillRect(Math.random()*64, Math.random()*64, 4, 4);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(50, 50);
+
+            const material = new THREE.MeshLambertMaterial({ map: texture });
+            const floor = new THREE.Mesh(geometry, material);
+            floor.rotation.x = -Math.PI / 2;
+            scene.add(floor);
+        }
+
+        // --- 建立 3D 迷宮 ---
+        function buildMaze3D() {
+            const brickTexture = createBrickTexture();
+            const wallGeo = new THREE.BoxGeometry(CELL_SIZE, WALL_HEIGHT, CELL_SIZE);
+            const wallMat = new THREE.MeshLambertMaterial({ map: brickTexture });
+
+            for (let z = 0; z < MAZE_SIZE; z++) {
+                for (let x = 0; x < MAZE_SIZE; x++) {
+                    if (maze[z][x] === 1) {
+                        const wall = new THREE.Mesh(wallGeo, wallMat);
+                        // 修正：座標加上 CELL_SIZE / 2
+                        wall.position.set(x * CELL_SIZE + CELL_SIZE / 2, WALL_HEIGHT / 2, z * CELL_SIZE + CELL_SIZE / 2);
+                        wall.castShadow = true;
+                        wall.receiveShadow = true;
+                        scene.add(wall);
+                        walls.push(wall);
+                    }
+                }
+            }
+            
+            // 建立邊界圍牆
+            // (簡單起見，迷宮生成邏輯已包含邊界，若無則需額外添加)
+        }
+
+        // --- 放置物件 ---
+        function placeObjects() {
+            // 找出所有空地
+            let emptySpots = [];
+            for(let z=1; z<MAZE_SIZE-1; z++){
+                for(let x=1; x<MAZE_SIZE-1; x++){
+                    if(maze[z][x] === 0 && !(x===1 && z===1)) { // 排除起點
+                        emptySpots.push({x: x, z: z});
+                    }
+                }
+            }
+
+            // 洗牌
+            emptySpots.sort(() => Math.random() - 0.5);
+
+            // 1. 放置終點大門 (最後一個位置)
+            const exitSpot = emptySpots.pop();
+            createExit(exitSpot.x, exitSpot.z);
+
+            // 2. 放置鑰匙 (倒數第二個位置)
+            const keySpot = emptySpots.pop();
+            createChest(keySpot.x, keySpot.z, 'key');
+
+            // 3. 放置運動器材 (取前3個)
+            for (let i = 0; i < 3; i++) {
+                if(emptySpots.length > 0) {
+                    const spot = emptySpots.pop();
+                    createChest(spot.x, spot.z, 'item', ITEMS[i]);
+                }
+            }
+        }
+
+        function createChest(x, z, type, itemData) {
+            // 寶箱主體
+            const geometry = new THREE.BoxGeometry(15, 15, 15);
+            const material = new THREE.MeshLambertMaterial({ color: 0x8B4513 }); // 棕色
+            const chest = new THREE.Mesh(geometry, material);
+            
+            // 金色蓋子
+            const lidGeo = new THREE.BoxGeometry(16, 5, 16);
+            const lidMat = new THREE.MeshLambertMaterial({ color: 0xFFD700 });
+            const lid = new THREE.Mesh(lidGeo, lidMat);
+            lid.position.y = 8;
+            chest.add(lid);
+
+            // 修正：座標加上 CELL_SIZE / 2
+            chest.position.set(x * CELL_SIZE + CELL_SIZE / 2, 7.5, z * CELL_SIZE + CELL_SIZE / 2);
+            scene.add(chest);
+
+            objects.push({
+                mesh: chest,
+                type: type, // 'key' or 'item'
+                data: itemData,
+                collected: false,
+                gridX: x,
+                gridZ: z
+            });
+        }
+
+        function createExit(x, z) {
+            // 大門拱門
+            const group = new THREE.Group();
+            
+            const pillarGeo = new THREE.CylinderGeometry(2, 2, 60);
+            const pillarMat = new THREE.MeshLambertMaterial({color: 0x888888});
+            
+            const p1 = new THREE.Mesh(pillarGeo, pillarMat);
+            p1.position.set(-10, 30, 0);
+            const p2 = new THREE.Mesh(pillarGeo, pillarMat);
+            p2.position.set(10, 30, 0);
+            
+            const topGeo = new THREE.BoxGeometry(30, 5, 5);
+            const top = new THREE.Mesh(topGeo, pillarMat);
+            top.position.set(0, 60, 0);
+
+            // 光門 (半透明)
+            const doorGeo = new THREE.PlaneGeometry(20, 60);
+            const doorMat = new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.3, side: THREE.DoubleSide });
+            const door = new THREE.Mesh(doorGeo, doorMat);
+            door.position.set(0, 30, 0);
+
+            group.add(p1, p2, top, door);
+            // 修正：座標加上 CELL_SIZE / 2
+            group.position.set(x * CELL_SIZE + CELL_SIZE / 2, 0, z * CELL_SIZE + CELL_SIZE / 2);
+            scene.add(group);
+
+            objects.push({
+                mesh: group,
+                type: 'exit',
+                gridX: x,
+                gridZ: z
+            });
+        }
+
+        // --- 控制與移動 ---
+        const keys = { w: false, a: false, s: false, d: false, space: false };
+
+        function onKeyDown(event) {
+            const key = event.key.toLowerCase();
+            if (key === 'w' || key === 'arrowup') keys.w = true;
+            if (key === 's' || key === 'arrowdown') keys.s = true;
+            if (key === 'a' || key === 'arrowleft') keys.a = true;
+            if (key === 'd' || key === 'arrowright') keys.d = true;
+            if (key === ' ') handleInteraction();
+        }
+
+        function onKeyUp(event) {
+            const key = event.key.toLowerCase();
+            if (key === 'w' || key === 'arrowup') keys.w = false;
+            if (key === 's' || key === 'arrowdown') keys.s = false;
+            if (key === 'a' || key === 'arrowleft') keys.a = false;
+            if (key === 'd' || key === 'arrowright') keys.d = false;
+        }
+
+        function updatePlayer() {
+            if (!isGameActive) return;
+
+            // 旋轉
+            if (keys.a) player.rotation += ROTATION_SPEED;
+            if (keys.d) player.rotation -= ROTATION_SPEED;
+
+            // 計算移動向量
+            const dx = Math.sin(player.rotation) * PLAYER_SPEED;
+            const dz = Math.cos(player.rotation) * PLAYER_SPEED;
+            
+            // 預測新位置
+            let nextX = player.x;
+            let nextZ = player.z;
+
+            if (keys.w) {
+                nextX -= dx;
+                nextZ -= dz;
+            }
+            if (keys.s) {
+                nextX += dx;
+                nextZ += dz;
+            }
+
+            // 簡單碰撞檢測 (將位置映射回網格)
+            // 給予一點緩衝空間 (半徑)
+            const padding = 10;
+            const checkCollision = (x, z) => {
+                // 因為我們做了偏移，計算網格時要小心
+                // 網格 0 的範圍是 0-40, 網格 1 是 40-80
+                // 所以 floor(x/CELL_SIZE) 就是正確的網格索引
+                const gridX = Math.floor((x + padding) / CELL_SIZE);
+                const gridX2 = Math.floor((x - padding) / CELL_SIZE);
+                const gridZ = Math.floor((z + padding) / CELL_SIZE);
+                const gridZ2 = Math.floor((z - padding) / CELL_SIZE);
+
+                // 邊界檢查
+                if (gridX < 0 || gridX >= MAZE_SIZE || gridZ < 0 || gridZ >= MAZE_SIZE) return true;
+
+                // 檢查四個角是否碰到牆
+                if (maze[gridZ][gridX] === 1 || maze[gridZ2][gridX2] === 1 || 
+                    maze[gridZ][gridX2] === 1 || maze[gridZ2][gridX] === 1) {
+                    return true;
+                }
+                return false;
+            };
+
+            // 分軸檢測，允許沿牆滑動
+            if (!checkCollision(nextX, player.z)) player.x = nextX;
+            if (!checkCollision(player.x, nextZ)) player.z = nextZ;
+
+            // 更新相機位置
+            camera.position.x = player.x;
+            camera.position.z = player.z;
+            camera.position.y = 15; // 視線高度
+            camera.rotation.y = player.rotation; // 視角旋轉
+        }
+
+        function handleInteraction() {
+            if (!isGameActive) return;
+
+            // 尋找最近的物件
+            let nearObj = null;
+            let minDist = INTERACTION_DIST;
+
+            objects.forEach(obj => {
+                if (obj.collected) return;
+                const dist = Math.sqrt((player.x - obj.mesh.position.x)**2 + (player.z - obj.mesh.position.z)**2);
+                if (dist < minDist) {
+                    nearObj = obj;
+                }
+            });
+
+            if (nearObj) {
+                if (nearObj.type === 'item') {
+                    collectItem(nearObj);
+                } else if (nearObj.type === 'key') {
+                    collectKey(nearObj);
+                } else if (nearObj.type === 'exit') {
+                    checkExit();
+                }
+            }
+        }
+
+        function collectItem(obj) {
+            obj.collected = true;
+            obj.mesh.visible = false;
+            itemsCollected++;
+            document.getElementById('score').innerText = itemsCollected;
+            showMessage(`獲得：${obj.data.name}！<br>體力充沛！`);
+        }
+
+        function collectKey(obj) {
+            obj.collected = true;
+            obj.mesh.visible = false;
+            hasKey = true;
+            const keyEl = document.getElementById('has-key');
+            keyEl.innerText = "已取得 (🔑)";
+            keyEl.style.color = "#4CAF50";
+            showMessage(`獲得：黃金鑰匙！<br>快去找出口大門！`);
+        }
+
+        function checkExit() {
+            if (hasKey && itemsCollected >= 3) {
+                isGameActive = false;
+                showMessage(`🎉 恭喜通關！ 🎉<br>你成功找到了所有器材並離開了迷宮！`, true);
+            } else {
+                let msg = "門鎖著！<br>";
+                if (itemsCollected < 3) msg += `還缺 ${3 - itemsCollected} 個器材。<br>`;
+                if (!hasKey) msg += "還沒有鑰匙。";
+                showMessage(msg);
+            }
+        }
+
+        // --- UI 與 小地圖 ---
+        function showMessage(text, isWin = false) {
+            const box = document.getElementById('message-box');
+            const content = document.getElementById('msg-content');
+            content.innerHTML = text;
+            box.style.display = 'block';
+            
+            // 暫停移動控制
+            const oldState = isGameActive;
+            isGameActive = false;
+            
+            // 修改按鈕行為
+            const btn = box.querySelector('button');
+            if (isWin) {
+                btn.innerText = "重新開始";
+                btn.onclick = () => location.reload();
+            } else {
+                btn.innerText = "繼續";
+                btn.onclick = () => {
+                    box.style.display = 'none';
+                    isGameActive = true;
+                };
+            }
+        }
+
+        function closeMessage() {
+            document.getElementById('message-box').style.display = 'none';
+            isGameActive = true;
+        }
+
+        function drawMiniMap() {
+            const canvas = document.getElementById('mini-map');
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+            
+            // 清除
+            ctx.fillStyle = '#222';
+            ctx.fillRect(0, 0, w, h);
+
+            const mapScale = w / (MAZE_SIZE * CELL_SIZE); // 縮放比例
+
+            // 1. 繪製迷宮牆壁
+            ctx.fillStyle = '#666';
+            for (let z = 0; z < MAZE_SIZE; z++) {
+                for (let x = 0; x < MAZE_SIZE; x++) {
+                    if (maze[z][x] === 1) {
+                        ctx.fillRect(x * CELL_SIZE * mapScale, z * CELL_SIZE * mapScale, CELL_SIZE * mapScale, CELL_SIZE * mapScale);
+                    }
+                }
+            }
+
+            // 2. 繪製未收集的寶物 (黃點)
+            objects.forEach(obj => {
+                if (!obj.collected && obj.type !== 'exit') {
+                    ctx.fillStyle = obj.type === 'key' ? '#FFD700' : '#00FF00';
+                    const ox = obj.mesh.position.x * mapScale;
+                    const oz = obj.mesh.position.z * mapScale;
+                    ctx.beginPath();
+                    ctx.arc(ox, oz, 4, 0, Math.PI*2); // 稍微加大點
+                    ctx.fill();
+                } else if (obj.type === 'exit') {
+                    ctx.fillStyle = '#00FFFF'; // 出口藍色
+                    const ox = obj.mesh.position.x * mapScale;
+                    const oz = obj.mesh.position.z * mapScale;
+                    ctx.fillRect(ox - 4, oz - 4, 8, 8);
+                }
+            });
+
+            // 3. 繪製玩家 (紅色箭頭)
+            const px = player.x * mapScale;
+            const pz = player.z * mapScale;
+
+            ctx.translate(px, pz);
+            
+            // 修正：旋轉計算。
+            // 遊戲中 Rot=0 是朝向 -Z (地圖上方)。
+            // Canvas 中 -PI/2 是朝向 上方。
+            // 遊戲中 'A' 鍵增加 Rotation (向左轉)。
+            // Canvas 中逆時針旋轉是負角度 (或正角度取決於坐標系，通常 rotate() 是順時針)。
+            // 這裡使用 -player.rotation - Math.PI / 2 來對齊
+            ctx.rotate(-player.rotation - Math.PI / 2); 
+            
+            ctx.fillStyle = 'red';
+            ctx.beginPath();
+            ctx.moveTo(0, -8); // 箭頭尖端 (更長一點)
+            ctx.lineTo(5, 5);
+            ctx.lineTo(0, 2);
+            ctx.lineTo(-5, 5);
+            ctx.fill();
+
+            // 重置矩陣
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+        }
+
+        // --- 系統功能 ---
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function startGame() {
+            document.getElementById('start-screen').style.display = 'none';
+            isGameActive = true;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            updatePlayer();
+            drawMiniMap();
+            
+            // 讓寶箱浮動或旋轉增加視覺效果
+            objects.forEach(obj => {
+                if (!obj.collected && obj.mesh) {
+                    obj.mesh.rotation.y += 0.02;
+                }
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        // 啟動
+        init();
+
+    </script>
+</body>
+</html>
