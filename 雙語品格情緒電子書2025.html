@@ -1,316 +1,358 @@
-import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, BookOpen, Volume2, ArrowRight, Image as ImageIcon } from 'lucide-react';
-
-const Ebook = () => {
-  const [currentPage, setCurrentPage] = useState(0);
-  // 用來記錄哪些圖片載入失敗，失敗的話就顯示預設生成的怪獸圖
-  const [imageError, setImageError] = useState({});
-
-  // 語音功能
-  const speak = (text, lang) => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel(); // 停止上一句
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = lang; // 'zh-TW' or 'en-US'
-      utterance.rate = 0.85; // 稍微放慢語速，適合學習
-      window.speechSynthesis.speak(utterance);
-    } else {
-      alert("您的瀏覽器不支援語音功能");
-    }
-  };
-
-  const handleImageError = (id) => {
-    setImageError(prev => ({ ...prev, [id]: true }));
-  };
-
-  // 資料設定 - 已修正 Google Drive 連結格式以解決顯示問題
-  const pages = [
-    // 1-12: 正向品格
-    { 
-      id: 1, 
-      imageUrl: "https://drive.google.com/thumbnail?id=1u_GrYWUDTCmAJz2kkkzCvxTKZgT4-kPS&sz=w1000",
-      zhTitle: "誠實獸", enTitle: "Honesty", zhText: "誠實的心讓光在心中閃耀。", enText: "A truthful heart makes the inner light shine.", color: "bg-yellow-50", accent: "text-yellow-600", border: "border-yellow-200" 
-    },
-    { 
-      id: 2, 
-      imageUrl: "https://drive.google.com/thumbnail?id=1epHoMnadPdVLrYeaRt27wKvqIXGABxpJ&sz=w1000",
-      zhTitle: "尊重獸", enTitle: "Respect", zhText: "每一次尊重都讓世界更溫柔。", enText: "Every act of respect makes the world gentler.", color: "bg-pink-50", accent: "text-pink-600", border: "border-pink-200" 
-    },
-    { 
-      id: 3, 
-      imageUrl: "https://drive.google.com/thumbnail?id=1tsKnmJksH3HouMAxL6rYdmBh5Ny6hE1-&sz=w1000",
-      zhTitle: "責任獸", enTitle: "Responsibility", zhText: "責任讓努力有了方向與力量。", enText: "Responsibility gives effort both direction and strength.", color: "bg-green-50", accent: "text-green-700", border: "border-green-200" 
-    },
-    { 
-      id: 4, 
-      imageUrl: "https://drive.google.com/thumbnail?id=1luS_UgtIoBjTL_23ySOBPv6uADuHJXnT&sz=w1000",
-      zhTitle: "創造獸", enTitle: "Creativity", zhText: "靈感如光，點亮想像的世界。", enText: "Inspiration is light that brightens the world of imagination.", color: "bg-purple-50", accent: "text-purple-600", border: "border-purple-200" 
-    },
-    { 
-      id: 5, 
-      imageUrl: "https://drive.google.com/thumbnail?id=10uGKZ3FSEHnIP80whWmSCTRyGCEoLBqw&sz=w1000",
-      zhTitle: "勇氣獸", enTitle: "Courage", zhText: "勇氣在心裡閃爍，帶我走向前方。", enText: "Courage shines within and leads the way forward.", color: "bg-orange-50", accent: "text-orange-600", border: "border-orange-200" 
-    },
-    { 
-      id: 6, 
-      imageUrl: "https://drive.google.com/thumbnail?id=1eO0BMgLb7ThY3c9p-qpL2L9qlBJvr_d0&sz=w1000",
-      zhTitle: "合作獸", enTitle: "Cooperation", zhText: "一起完成的事，總是更有魔法。", enText: "Things done together always hold more magic.", color: "bg-blue-50", accent: "text-blue-600", border: "border-blue-200" 
-    },
-    { 
-      id: 7, 
-      imageUrl: "https://drive.google.com/thumbnail?id=1hTpbxU_AUtCMpNz9bomRyYMvH7iXmHoa&sz=w1000",
-      zhTitle: "耐心獸", enTitle: "Patience", zhText: "穩穩走，就能走得更遠。", enText: "Steady steps take you farther.", color: "bg-teal-50", accent: "text-teal-600", border: "border-teal-200" 
-    },
-    { 
-      id: 8, 
-      imageUrl: "https://drive.google.com/thumbnail?id=14vn2I74k7lvibHnESm_knkvrJPHeBta6&sz=w1000",
-      zhTitle: "感恩獸", enTitle: "Gratitude", zhText: "感恩讓平凡的日子變得明亮。", enText: "Gratitude makes ordinary days shine.", color: "bg-rose-50", accent: "text-rose-600", border: "border-rose-200" 
-    },
-    { 
-      id: 9, 
-      imageUrl: "https://drive.google.com/thumbnail?id=1hretx0y3aKaKBKeU2GtxoDhdsKQxIrAG&sz=w1000",
-      zhTitle: "自律獸", enTitle: "Self-discipline", zhText: "專注的時刻，就是力量的源頭。", enText: "The moment of focus is the source of strength.", color: "bg-indigo-50", accent: "text-indigo-600", border: "border-indigo-200" 
-    },
-    { 
-      id: 10, 
-      imageUrl: "https://drive.google.com/thumbnail?id=1AToYJmpP3xGGtnI_IeW2ay6l18HdANbB&sz=w1000",
-      zhTitle: "樂觀獸", enTitle: "Optimism", zhText: "每個清晨都藏著新的希望。", enText: "Every morning hides a new hope.", color: "bg-amber-50", accent: "text-amber-600", border: "border-amber-200" 
-    },
-    { 
-      id: 11, 
-      imageUrl: "https://drive.google.com/thumbnail?id=1efqfQrW80WxfOCOPJB6vIa8iNE2LmU6I&sz=w1000",
-      zhTitle: "關懷獸", enTitle: "Caring", zhText: "傾聽是最有力量的關懷。", enText: "Listening is the most powerful form of care.", color: "bg-emerald-50", accent: "text-emerald-600", border: "border-emerald-200" 
-    },
-    { 
-      id: 12, 
-      imageUrl: "https://drive.google.com/thumbnail?id=1xX4BwkbDcYBGv5x4axjk9C6HfBVkM0b5&sz=w1000",
-      zhTitle: "恆毅獸", enTitle: "Grit", zhText: "堅持讓小小的芽長成大樹。", enText: "Perseverance helps a tiny sprout grow into a great tree.", color: "bg-lime-50", accent: "text-lime-700", border: "border-lime-200" 
-    },
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>雙語品格與情緒魔法電子書</title>
     
-    // 13-24: 情緒詞彙
-    { 
-      id: 13, 
-      imageUrl: "https://drive.google.com/thumbnail?id=1QmPP-cHpaeTaSMiRfDDkkvJlfTdEi0cD&sz=w1000",
-      zhTitle: "開心怪", enTitle: "Happy", zhText: "我們一起笑一笑，陽光就出來啦！", enText: "Let's smile together - the sunshine will come out!", color: "bg-yellow-100", accent: "text-yellow-700", border: "border-yellow-300" 
-    },
-    { 
-      id: 14, 
-      imageUrl: "https://drive.google.com/thumbnail?id=1UKfthqOnwEo_cOIpAbYFzyNESuQoihab&sz=w1000",
-      zhTitle: "生氣怪", enTitle: "Angry", zhText: "我會先吸氣三秒，再慢慢吐氣！", enText: "I take a deep breath and let it go slowly!", color: "bg-red-100", accent: "text-red-700", border: "border-red-300" 
-    },
-    { 
-      id: 15, 
-      imageUrl: "https://drive.google.com/thumbnail?id=1pJ4ANMf_VEZqRGgVN2slgjxn9kRh9fJd&sz=w1000",
-      zhTitle: "傷心怪", enTitle: "Sad", zhText: "眼淚落下，也會變成閃亮的小星星。", enText: "Tears can turn into shining stars.", color: "bg-blue-100", accent: "text-blue-700", border: "border-blue-300" 
-    },
-    { 
-      id: 16, 
-      imageUrl: "https://drive.google.com/thumbnail?id=1CZxIFOi6TNjtxOnPftoxFe2CSU65jJqG&sz=w1000",
-      zhTitle: "害怕怪", enTitle: "Scared", zhText: "我雖然怕怕的，但還是想試試看！", enText: "I'm scared, but I'll try anyway!", color: "bg-violet-100", accent: "text-violet-700", border: "border-violet-300" 
-    },
-    { 
-      id: 17, 
-      imageUrl: "https://drive.google.com/thumbnail?id=1IRdcCe94qw6O7cAFRtlVtqsPNQGvG2GF&sz=w1000",
-      zhTitle: "驚訝怪", enTitle: "Surprised", zhText: "哇！這世界比我想的還要神奇！", enText: "Wow! The world is more amazing than I thought!", color: "bg-fuchsia-100", accent: "text-fuchsia-700", border: "border-fuchsia-300" 
-    },
-    { 
-      id: 18, 
-      imageUrl: "https://drive.google.com/thumbnail?id=1ae4cZP0X4Q8SsY-RP_iYOG-Qd0ZFWS7l&sz=w1000",
-      zhTitle: "緊張怪", enTitle: "Nervous", zhText: "我拍拍胸口，讓心跳慢一點。", enText: "I pat my chest to calm my heart.", color: "bg-slate-100", accent: "text-slate-700", border: "border-slate-300" 
-    },
-    { 
-      id: 19, 
-      imageUrl: "https://drive.google.com/thumbnail?id=1c4S3nz_nLoBTrmksfdg1UlY7sB3KEZxv&sz=w1000",
-      zhTitle: "興奮怪", enTitle: "Excited", zhText: "好期待喔！我想大聲喊耶！", enText: "I'm so excited! I just want to shout yay!", color: "bg-orange-100", accent: "text-orange-700", border: "border-orange-300" 
-    },
-    { 
-      id: 20, 
-      imageUrl: "https://drive.google.com/thumbnail?id=12PGBFZQ2mvKlGcdEtotDBloucaLNJPrL&sz=w1000",
-      zhTitle: "害羞怪", enTitle: "Shy", zhText: "我有點臉紅，但還是微笑說你好。", enText: "I'm blushing, but I can still say hello!", color: "bg-rose-100", accent: "text-rose-700", border: "border-rose-300" 
-    },
-    { 
-      id: 21, 
-      imageUrl: "https://drive.google.com/thumbnail?id=1CcFqwGeqTvRNkscxI4Bq0FFaE5Pa0cZt&sz=w1000",
-      zhTitle: "放鬆怪", enTitle: "Relaxed", zhText: "呼～好舒服的風，連雲也想睡覺。", enText: "Ahh... such a nice breeze, even the clouds want to nap.", color: "bg-sky-100", accent: "text-sky-700", border: "border-sky-300" 
-    },
-    { 
-      id: 22, 
-      imageUrl: "https://drive.google.com/thumbnail?id=1ZG-Y5_3ZG5KQyygyWBc99lnVL9bFPRJB&sz=w1000",
-      zhTitle: "自豪怪", enTitle: "Proud", zhText: "我做到了！給自己一個大大的拍拍手！", enText: "I did it! I'll give myself a big clap!", color: "bg-yellow-200", accent: "text-yellow-800", border: "border-yellow-400" 
-    },
-    { 
-      id: 23, 
-      imageUrl: "https://drive.google.com/thumbnail?id=1Bfz83-J8Wgmrk5NtMjJbsuDFrkwqwBYd&sz=w1000",
-      zhTitle: "失望怪", enTitle: "Disappointed", zhText: "雖然沒成功，但我會再試一次！", enText: "It didn't work, but I'll try again!", color: "bg-gray-100", accent: "text-gray-600", border: "border-gray-300" 
-    },
-    { 
-      id: 24, 
-      imageUrl: "https://drive.google.com/thumbnail?id=1ycySLHC9R_mPyV2_A6_TW9LwIKx8uIdM&sz=w1000",
-      zhTitle: "感動怪", enTitle: "Touched", zhText: "心裡好暖，好像被星光抱了一下。", enText: "My heart feels warm, like a hug of starlight.", color: "bg-pink-100", accent: "text-pink-700", border: "border-pink-300" 
-    }
-  ];
-
-  const totalPages = pages.length;
-
-  const goToNextPage = () => {
-    if (currentPage < totalPages) setCurrentPage(curr => curr + 1);
-  };
-
-  const goToPrevPage = () => {
-    if (currentPage > 0) setCurrentPage(curr => curr - 1);
-  };
-
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'ArrowRight') goToNextPage();
-      else if (e.key === 'ArrowLeft') goToPrevPage();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentPage]);
-
-  // 封面頁渲染
-  const renderCover = () => (
-    <div className="flex flex-col items-center justify-center h-full p-8 text-center bg-gradient-to-br from-indigo-50 to-purple-100 rounded-3xl border-4 border-white shadow-2xl animate-fade-in relative overflow-hidden">
-      <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
-      <BookOpen className="w-24 h-24 text-indigo-600 mb-6 z-10" />
-      <h1 className="text-4xl md:text-5xl font-black text-indigo-900 mb-4 tracking-tight z-10">
-        雙語品格與情緒<br/>魔法電子書
-      </h1>
-      <div className="flex gap-4 mb-8 z-10">
-        <span className="px-4 py-1 bg-white/50 rounded-full text-indigo-700 font-bold border border-indigo-200">12 種品格</span>
-        <span className="px-4 py-1 bg-white/50 rounded-full text-pink-700 font-bold border border-pink-200">12 種情緒</span>
-      </div>
-      <button 
-        onClick={goToNextPage}
-        className="mt-8 group flex items-center gap-3 px-8 py-4 bg-indigo-600 text-white rounded-full text-xl font-bold shadow-lg hover:bg-indigo-700 transition-all transform hover:scale-105 z-10"
-      >
-        開始閱讀 <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
-      </button>
-    </div>
-  );
-
-  // 內頁渲染
-  const renderPage = (page) => {
-    // 圖片邏輯：優先使用 Google Drive 圖片，失敗則使用生成圖
-    const fallbackImageSrc = `https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${page.enTitle}&backgroundColor=transparent`;
+    <!-- 載入 Tailwind CSS (樣式) -->
+    <script src="https://cdn.tailwindcss.com"></script>
     
-    return (
-      // 關鍵修改：將 overflow-hidden 改為 overflow-y-auto，確保內容過長時可以捲動看到底部按鈕
-      <div className={`flex flex-col h-full ${page.color} rounded-3xl border-4 border-white shadow-2xl overflow-y-auto relative transition-all duration-300 scrollbar-thin scrollbar-thumb-indigo-200 scrollbar-track-transparent`}>
-        {/* 頁碼 */}
-        <div className="absolute top-6 right-6 bg-white/80 backdrop-blur px-4 py-1 rounded-full text-sm font-bold text-gray-500 shadow-sm z-20">
-          {page.id} / {totalPages}
-        </div>
+    <!-- 載入 React 和 ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- 載入 Babel (讓瀏覽器看懂 JSX) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-        <div className="flex-1 flex flex-col items-center justify-start p-6 md:p-8 text-center z-10 min-h-min">
-          {/* 類別標籤 */}
-          <div className={`mb-4 px-4 py-1.5 rounded-full text-xs font-bold tracking-wider uppercase bg-white/60 ${page.accent}`}>
-            {page.id <= 12 ? 'Character Trait • 品格' : 'Emotion • 情緒'}
-          </div>
+    <!-- 自定義 Scrollbar 樣式 -->
+    <style>
+        /* Webkit browsers (Chrome, Safari) */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background-color: #c7d2fe; /* indigo-200 */
+            border-radius: 20px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background-color: #818cf8; /* indigo-400 */
+        }
+    </style>
+</head>
+<body class="bg-slate-100">
+    <div id="root"></div>
 
-          {/* 圖片區域 - 拍立得風格 (保持 A4 比例) */}
-          <div className="mb-6 relative group flex-shrink-0">
-            <div className="bg-white p-3 pb-8 rounded-lg shadow-lg transform rotate-[-2deg] group-hover:rotate-0 transition-transform duration-500 ease-in-out border border-gray-100">
-               {/* 直式長方形比例 */}
-               <div className="w-56 h-80 md:w-72 md:h-[26rem] bg-gray-50 rounded overflow-hidden flex items-center justify-center relative">
-                 <img 
-                   src={imageError[page.id] ? fallbackImageSrc : page.imageUrl}
-                   alt={page.enTitle}
-                   className="w-full h-full object-cover"
-                   referrerPolicy="no-referrer"
-                   onError={() => handleImageError(page.id)}
-                 />
-                 {imageError[page.id] && (
-                   <div className="absolute bottom-2 right-2 opacity-50">
-                     <ImageIcon className="w-4 h-4 text-gray-400" />
-                   </div>
-                 )}
-               </div>
-               <div className="absolute bottom-2 left-0 w-full text-center text-gray-400 font-handwriting text-sm">
-                 {page.enTitle}
-               </div>
-            </div>
-          </div>
+    <script type="text/babel">
+        const { useState, useEffect } = React;
 
-          {/* 標題 */}
-          <div className="mb-6 space-y-1 flex-shrink-0">
-            <h2 className={`text-3xl md:text-5xl font-black ${page.accent} tracking-tight drop-shadow-sm`}>
-              {page.zhTitle}
-            </h2>
-            <h3 className={`text-lg md:text-2xl font-bold ${page.accent} opacity-70 font-serif`}>
-              {page.enTitle}
-            </h3>
-          </div>
+        // --- 圖示元件 (取代 Lucide-react import) ---
+        const ChevronLeft = (props) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m15 18-6-6 6-6"/></svg>
+        );
+        const ChevronRight = (props) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m9 18 6-6-6-6"/></svg>
+        );
+        const BookOpen = (props) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        );
+        const Volume2 = (props) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+        );
+        const ArrowRight = (props) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        );
+        const ImageIcon = (props) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+        );
 
-          {/* 句子卡片 - 包含語音按鈕 */}
-          <div className={`w-full max-w-2xl bg-white/80 backdrop-blur-md p-4 md:p-5 rounded-2xl border ${page.border} shadow-sm space-y-3 mb-8 flex-shrink-0`}>
-            {/* 中文區域 */}
-            <div className="flex items-center justify-between gap-3 bg-white/50 p-2 rounded-xl">
-              <p className="text-lg md:text-2xl text-gray-800 font-bold leading-relaxed text-left pl-2 flex-1">
-                {page.zhText}
-              </p>
-              <button 
-                onClick={() => speak(page.zhText, 'zh-TW')} 
-                className="p-3 bg-indigo-100 rounded-full hover:bg-indigo-200 text-indigo-700 transition-all shadow-sm active:scale-95 flex-shrink-0 group"
-                title="播放中文發音"
-              >
-                <Volume2 className="w-6 h-6 group-hover:scale-110 transition-transform" />
-              </button>
-            </div>
-            
-            {/* 分隔線 */}
-            <hr className="border-gray-200/50" />
+        // --- 主程式元件 ---
+        const Ebook = () => {
+            const [currentPage, setCurrentPage] = useState(0);
+            const [imageError, setImageError] = useState({});
 
-            {/* 英文區域 */}
-            <div className="flex items-center justify-between gap-3 bg-white/50 p-2 rounded-xl">
-              <p className="text-base md:text-xl text-gray-600 font-serif italic text-left pl-2 flex-1">
-                {page.enText}
-              </p>
-              <button 
-                onClick={() => speak(page.enText, 'en-US')} 
-                className="p-3 bg-indigo-100 rounded-full hover:bg-indigo-200 text-indigo-700 transition-all shadow-sm active:scale-95 flex-shrink-0 group"
-                title="Play English Audio"
-              >
-                <Volume2 className="w-6 h-6 group-hover:scale-110 transition-transform" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
+            const speak = (text, lang) => {
+                if ('speechSynthesis' in window) {
+                    window.speechSynthesis.cancel();
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.lang = lang;
+                    utterance.rate = 0.85;
+                    window.speechSynthesis.speak(utterance);
+                } else {
+                    alert("您的瀏覽器不支援語音功能");
+                }
+            };
 
-  return (
-    <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center p-4 md:p-6 font-sans">
-      <div className="w-full max-w-4xl aspect-[3/4] md:aspect-[4/3] relative">
-        <div className="w-full h-full relative perspective-1000">
-          {currentPage === 0 ? renderCover() : renderPage(pages[currentPage - 1])}
-        </div>
+            const handleImageError = (id) => {
+                setImageError(prev => ({ ...prev, [id]: true }));
+            };
 
-        {/* 導航按鈕 - 確保在最上層 */}
-        <div className="absolute top-1/2 -left-3 md:-left-14 -translate-y-1/2 z-30">
-          <button onClick={goToPrevPage} disabled={currentPage === 0}
-            className={`p-3 rounded-full bg-white shadow-xl text-indigo-600 border border-indigo-50 transition-all ${currentPage === 0 ? 'opacity-0 pointer-events-none' : 'hover:scale-110 active:scale-95'}`}>
-            <ChevronLeft className="w-8 h-8" />
-          </button>
-        </div>
-        <div className="absolute top-1/2 -right-3 md:-right-14 -translate-y-1/2 z-30">
-          <button onClick={goToNextPage} disabled={currentPage === totalPages}
-            className={`p-3 rounded-full bg-white shadow-xl text-indigo-600 border border-indigo-50 transition-all ${currentPage === totalPages ? 'opacity-0 pointer-events-none' : 'hover:scale-110 active:scale-95'}`}>
-            <ChevronRight className="w-8 h-8" />
-          </button>
-        </div>
-      </div>
-      
-      {/* 底部進度條 */}
-      {currentPage > 0 && (
-        <div className="mt-6 w-full max-w-xs bg-gray-200 rounded-full h-2">
-          <div className="bg-indigo-500 h-2 rounded-full transition-all duration-300" style={{ width: `${(currentPage / totalPages) * 100}%` }}></div>
-        </div>
-      )}
-    </div>
-  );
-};
+            const pages = [
+                { 
+                id: 1, 
+                imageUrl: "https://drive.google.com/thumbnail?id=1u_GrYWUDTCmAJz2kkkzCvxTKZgT4-kPS&sz=w1000",
+                zhTitle: "誠實獸", enTitle: "Honesty", zhText: "誠實的心讓光在心中閃耀。", enText: "A truthful heart makes the inner light shine.", color: "bg-yellow-50", accent: "text-yellow-600", border: "border-yellow-200" 
+                },
+                { 
+                id: 2, 
+                imageUrl: "https://drive.google.com/thumbnail?id=1epHoMnadPdVLrYeaRt27wKvqIXGABxpJ&sz=w1000",
+                zhTitle: "尊重獸", enTitle: "Respect", zhText: "每一次尊重都讓世界更溫柔。", enText: "Every act of respect makes the world gentler.", color: "bg-pink-50", accent: "text-pink-600", border: "border-pink-200" 
+                },
+                { 
+                id: 3, 
+                imageUrl: "https://drive.google.com/thumbnail?id=1tsKnmJksH3HouMAxL6rYdmBh5Ny6hE1-&sz=w1000",
+                zhTitle: "責任獸", enTitle: "Responsibility", zhText: "責任讓努力有了方向與力量。", enText: "Responsibility gives effort both direction and strength.", color: "bg-green-50", accent: "text-green-700", border: "border-green-200" 
+                },
+                { 
+                id: 4, 
+                imageUrl: "https://drive.google.com/thumbnail?id=1luS_UgtIoBjTL_23ySOBPv6uADuHJXnT&sz=w1000",
+                zhTitle: "創造獸", enTitle: "Creativity", zhText: "靈感如光，點亮想像的世界。", enText: "Inspiration is light that brightens the world of imagination.", color: "bg-purple-50", accent: "text-purple-600", border: "border-purple-200" 
+                },
+                { 
+                id: 5, 
+                imageUrl: "https://drive.google.com/thumbnail?id=10uGKZ3FSEHnIP80whWmSCTRyGCEoLBqw&sz=w1000",
+                zhTitle: "勇氣獸", enTitle: "Courage", zhText: "勇氣在心裡閃爍，帶我走向前方。", enText: "Courage shines within and leads the way forward.", color: "bg-orange-50", accent: "text-orange-600", border: "border-orange-200" 
+                },
+                { 
+                id: 6, 
+                imageUrl: "https://drive.google.com/thumbnail?id=1eO0BMgLb7ThY3c9p-qpL2L9qlBJvr_d0&sz=w1000",
+                zhTitle: "合作獸", enTitle: "Cooperation", zhText: "一起完成的事，總是更有魔法。", enText: "Things done together always hold more magic.", color: "bg-blue-50", accent: "text-blue-600", border: "border-blue-200" 
+                },
+                { 
+                id: 7, 
+                imageUrl: "https://drive.google.com/thumbnail?id=1hTpbxU_AUtCMpNz9bomRyYMvH7iXmHoa&sz=w1000",
+                zhTitle: "耐心獸", enTitle: "Patience", zhText: "穩穩走，就能走得更遠。", enText: "Steady steps take you farther.", color: "bg-teal-50", accent: "text-teal-600", border: "border-teal-200" 
+                },
+                { 
+                id: 8, 
+                imageUrl: "https://drive.google.com/thumbnail?id=14vn2I74k7lvibHnESm_knkvrJPHeBta6&sz=w1000",
+                zhTitle: "感恩獸", enTitle: "Gratitude", zhText: "感恩讓平凡的日子變得明亮。", enText: "Gratitude makes ordinary days shine.", color: "bg-rose-50", accent: "text-rose-600", border: "border-rose-200" 
+                },
+                { 
+                id: 9, 
+                imageUrl: "https://drive.google.com/thumbnail?id=1hretx0y3aKaKBKeU2GtxoDhdsKQxIrAG&sz=w1000",
+                zhTitle: "自律獸", enTitle: "Self-discipline", zhText: "專注的時刻，就是力量的源頭。", enText: "The moment of focus is the source of strength.", color: "bg-indigo-50", accent: "text-indigo-600", border: "border-indigo-200" 
+                },
+                { 
+                id: 10, 
+                imageUrl: "https://drive.google.com/thumbnail?id=1AToYJmpP3xGGtnI_IeW2ay6l18HdANbB&sz=w1000",
+                zhTitle: "樂觀獸", enTitle: "Optimism", zhText: "每個清晨都藏著新的希望。", enText: "Every morning hides a new hope.", color: "bg-amber-50", accent: "text-amber-600", border: "border-amber-200" 
+                },
+                { 
+                id: 11, 
+                imageUrl: "https://drive.google.com/thumbnail?id=1efqfQrW80WxfOCOPJB6vIa8iNE2LmU6I&sz=w1000",
+                zhTitle: "關懷獸", enTitle: "Caring", zhText: "傾聽是最有力量的關懷。", enText: "Listening is the most powerful form of care.", color: "bg-emerald-50", accent: "text-emerald-600", border: "border-emerald-200" 
+                },
+                { 
+                id: 12, 
+                imageUrl: "https://drive.google.com/thumbnail?id=1xX4BwkbDcYBGv5x4axjk9C6HfBVkM0b5&sz=w1000",
+                zhTitle: "恆毅獸", enTitle: "Grit", zhText: "堅持讓小小的芽長成大樹。", enText: "Perseverance helps a tiny sprout grow into a great tree.", color: "bg-lime-50", accent: "text-lime-700", border: "border-lime-200" 
+                },
+                { 
+                id: 13, 
+                imageUrl: "https://drive.google.com/thumbnail?id=1QmPP-cHpaeTaSMiRfDDkkvJlfTdEi0cD&sz=w1000",
+                zhTitle: "開心怪", enTitle: "Happy", zhText: "我們一起笑一笑，陽光就出來啦！", enText: "Let's smile together - the sunshine will come out!", color: "bg-yellow-100", accent: "text-yellow-700", border: "border-yellow-300" 
+                },
+                { 
+                id: 14, 
+                imageUrl: "https://drive.google.com/thumbnail?id=1UKfthqOnwEo_cOIpAbYFzyNESuQoihab&sz=w1000",
+                zhTitle: "生氣怪", enTitle: "Angry", zhText: "我會先吸氣三秒，再慢慢吐氣！", enText: "I take a deep breath and let it go slowly!", color: "bg-red-100", accent: "text-red-700", border: "border-red-300" 
+                },
+                { 
+                id: 15, 
+                imageUrl: "https://drive.google.com/thumbnail?id=1pJ4ANMf_VEZqRGgVN2slgjxn9kRh9fJd&sz=w1000",
+                zhTitle: "傷心怪", enTitle: "Sad", zhText: "眼淚落下，也會變成閃亮的小星星。", enText: "Tears can turn into shining stars.", color: "bg-blue-100", accent: "text-blue-700", border: "border-blue-300" 
+                },
+                { 
+                id: 16, 
+                imageUrl: "https://drive.google.com/thumbnail?id=1CZxIFOi6TNjtxOnPftoxFe2CSU65jJqG&sz=w1000",
+                zhTitle: "害怕怪", enTitle: "Scared", zhText: "我雖然怕怕的，但還是想試試看！", enText: "I'm scared, but I'll try anyway!", color: "bg-violet-100", accent: "text-violet-700", border: "border-violet-300" 
+                },
+                { 
+                id: 17, 
+                imageUrl: "https://drive.google.com/thumbnail?id=1IRdcCe94qw6O7cAFRtlVtqsPNQGvG2GF&sz=w1000",
+                zhTitle: "驚訝怪", enTitle: "Surprised", zhText: "哇！這世界比我想的還要神奇！", enText: "Wow! The world is more amazing than I thought!", color: "bg-fuchsia-100", accent: "text-fuchsia-700", border: "border-fuchsia-300" 
+                },
+                { 
+                id: 18, 
+                imageUrl: "https://drive.google.com/thumbnail?id=1ae4cZP0X4Q8SsY-RP_iYOG-Qd0ZFWS7l&sz=w1000",
+                zhTitle: "緊張怪", enTitle: "Nervous", zhText: "我拍拍胸口，讓心跳慢一點。", enText: "I pat my chest to calm my heart.", color: "bg-slate-100", accent: "text-slate-700", border: "border-slate-300" 
+                },
+                { 
+                id: 19, 
+                imageUrl: "https://drive.google.com/thumbnail?id=1c4S3nz_nLoBTrmksfdg1UlY7sB3KEZxv&sz=w1000",
+                zhTitle: "興奮怪", enTitle: "Excited", zhText: "好期待喔！我想大聲喊耶！", enText: "I'm so excited! I just want to shout yay!", color: "bg-orange-100", accent: "text-orange-700", border: "border-orange-300" 
+                },
+                { 
+                id: 20, 
+                imageUrl: "https://drive.google.com/thumbnail?id=12PGBFZQ2mvKlGcdEtotDBloucaLNJPrL&sz=w1000",
+                zhTitle: "害羞怪", enTitle: "Shy", zhText: "我有點臉紅，但還是微笑說你好。", enText: "I'm blushing, but I can still say hello!", color: "bg-rose-100", accent: "text-rose-700", border: "border-rose-300" 
+                },
+                { 
+                id: 21, 
+                imageUrl: "https://drive.google.com/thumbnail?id=1CcFqwGeqTvRNkscxI4Bq0FFaE5Pa0cZt&sz=w1000",
+                zhTitle: "放鬆怪", enTitle: "Relaxed", zhText: "呼～好舒服的風，連雲也想睡覺。", enText: "Ahh... such a nice breeze, even the clouds want to nap.", color: "bg-sky-100", accent: "text-sky-700", border: "border-sky-300" 
+                },
+                { 
+                id: 22, 
+                imageUrl: "https://drive.google.com/thumbnail?id=1ZG-Y5_3ZG5KQyygyWBc99lnVL9bFPRJB&sz=w1000",
+                zhTitle: "自豪怪", enTitle: "Proud", zhText: "我做到了！給自己一個大大的拍拍手！", enText: "I did it! I'll give myself a big clap!", color: "bg-yellow-200", accent: "text-yellow-800", border: "border-yellow-400" 
+                },
+                { 
+                id: 23, 
+                imageUrl: "https://drive.google.com/thumbnail?id=1Bfz83-J8Wgmrk5NtMjJbsuDFrkwqwBYd&sz=w1000",
+                zhTitle: "失望怪", enTitle: "Disappointed", zhText: "雖然沒成功，但我會再試一次！", enText: "It didn't work, but I'll try again!", color: "bg-gray-100", accent: "text-gray-600", border: "border-gray-300" 
+                },
+                { 
+                id: 24, 
+                imageUrl: "https://drive.google.com/thumbnail?id=1ycySLHC9R_mPyV2_A6_TW9LwIKx8uIdM&sz=w1000",
+                zhTitle: "感動怪", enTitle: "Touched", zhText: "心裡好暖，好像被星光抱了一下。", enText: "My heart feels warm, like a hug of starlight.", color: "bg-pink-100", accent: "text-pink-700", border: "border-pink-300" 
+                }
+            ];
 
-export default Ebook;
+            const totalPages = pages.length;
+
+            const goToNextPage = () => {
+                if (currentPage < totalPages) setCurrentPage(curr => curr + 1);
+            };
+
+            const goToPrevPage = () => {
+                if (currentPage > 0) setCurrentPage(curr => curr - 1);
+            };
+
+            useEffect(() => {
+                const handleKeyDown = (e) => {
+                    if (e.key === 'ArrowRight') goToNextPage();
+                    else if (e.key === 'ArrowLeft') goToPrevPage();
+                };
+                window.addEventListener('keydown', handleKeyDown);
+                return () => window.removeEventListener('keydown', handleKeyDown);
+            }, [currentPage]);
+
+            const renderCover = () => (
+                <div className="flex flex-col items-center justify-center h-full p-8 text-center bg-gradient-to-br from-indigo-50 to-purple-100 rounded-3xl border-4 border-white shadow-2xl animate-fade-in relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-full opacity-10" style={{backgroundImage: "url('https://www.transparenttextures.com/patterns/cubes.png')"}}></div>
+                    <BookOpen className="w-24 h-24 text-indigo-600 mb-6 z-10" />
+                    <h1 className="text-4xl md:text-5xl font-black text-indigo-900 mb-4 tracking-tight z-10">
+                        雙語品格與情緒<br/>魔法電子書
+                    </h1>
+                    <div className="flex gap-4 mb-8 z-10">
+                        <span className="px-4 py-1 bg-white/50 rounded-full text-indigo-700 font-bold border border-indigo-200">12 種品格</span>
+                        <span className="px-4 py-1 bg-white/50 rounded-full text-pink-700 font-bold border border-pink-200">12 種情緒</span>
+                    </div>
+                    <button 
+                        onClick={goToNextPage}
+                        className="mt-8 group flex items-center gap-3 px-8 py-4 bg-indigo-600 text-white rounded-full text-xl font-bold shadow-lg hover:bg-indigo-700 transition-all transform hover:scale-105 z-10"
+                    >
+                        開始閱讀 <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                    </button>
+                </div>
+            );
+
+            const renderPage = (page) => {
+                const fallbackImageSrc = `https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${page.enTitle}&backgroundColor=transparent`;
+                
+                return (
+                    <div className={`flex flex-col h-full ${page.color} rounded-3xl border-4 border-white shadow-2xl overflow-y-auto relative transition-all duration-300`}>
+                        <div className="absolute top-6 right-6 bg-white/80 backdrop-blur px-4 py-1 rounded-full text-sm font-bold text-gray-500 shadow-sm z-20">
+                            {page.id} / {totalPages}
+                        </div>
+
+                        <div className="flex-1 flex flex-col items-center justify-start p-6 md:p-8 text-center z-10 min-h-min">
+                            <div className={`mb-4 px-4 py-1.5 rounded-full text-xs font-bold tracking-wider uppercase bg-white/60 ${page.accent}`}>
+                                {page.id <= 12 ? 'Character Trait • 品格' : 'Emotion • 情緒'}
+                            </div>
+
+                            <div className="mb-6 relative group flex-shrink-0">
+                                <div className="bg-white p-3 pb-8 rounded-lg shadow-lg transform rotate-[-2deg] group-hover:rotate-0 transition-transform duration-500 ease-in-out border border-gray-100">
+                                    <div className="w-56 h-80 md:w-72 md:h-[26rem] bg-gray-50 rounded overflow-hidden flex items-center justify-center relative">
+                                        <img 
+                                            src={imageError[page.id] ? fallbackImageSrc : page.imageUrl}
+                                            alt={page.enTitle}
+                                            className="w-full h-full object-cover"
+                                            referrerPolicy="no-referrer"
+                                            onError={() => handleImageError(page.id)}
+                                        />
+                                        {imageError[page.id] && (
+                                            <div className="absolute bottom-2 right-2 opacity-50">
+                                                <ImageIcon className="w-4 h-4 text-gray-400" />
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="absolute bottom-2 left-0 w-full text-center text-gray-400 font-handwriting text-sm">
+                                        {page.enTitle}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mb-6 space-y-1 flex-shrink-0">
+                                <h2 className={`text-3xl md:text-5xl font-black ${page.accent} tracking-tight drop-shadow-sm`}>
+                                    {page.zhTitle}
+                                </h2>
+                                <h3 className={`text-lg md:text-2xl font-bold ${page.accent} opacity-70 font-serif`}>
+                                    {page.enTitle}
+                                </h3>
+                            </div>
+
+                            <div className={`w-full max-w-2xl bg-white/80 backdrop-blur-md p-4 md:p-5 rounded-2xl border ${page.border} shadow-sm space-y-3 mb-8 flex-shrink-0`}>
+                                <div className="flex items-center justify-between gap-3 bg-white/50 p-2 rounded-xl">
+                                    <p className="text-lg md:text-2xl text-gray-800 font-bold leading-relaxed text-left pl-2 flex-1">
+                                        {page.zhText}
+                                    </p>
+                                    <button 
+                                        onClick={() => speak(page.zhText, 'zh-TW')} 
+                                        className="p-3 bg-indigo-100 rounded-full hover:bg-indigo-200 text-indigo-700 transition-all shadow-sm active:scale-95 flex-shrink-0 group"
+                                        title="播放中文發音"
+                                    >
+                                        <Volume2 className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                                    </button>
+                                </div>
+                                
+                                <hr className="border-gray-200/50" />
+
+                                <div className="flex items-center justify-between gap-3 bg-white/50 p-2 rounded-xl">
+                                    <p className="text-base md:text-xl text-gray-600 font-serif italic text-left pl-2 flex-1">
+                                        {page.enText}
+                                    </p>
+                                    <button 
+                                        onClick={() => speak(page.enText, 'en-US')} 
+                                        className="p-3 bg-indigo-100 rounded-full hover:bg-indigo-200 text-indigo-700 transition-all shadow-sm active:scale-95 flex-shrink-0 group"
+                                        title="Play English Audio"
+                                    >
+                                        <Volume2 className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            return (
+                <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center p-4 md:p-6 font-sans">
+                    <div className="w-full max-w-4xl aspect-[3/4] md:aspect-[4/3] relative">
+                        <div className="w-full h-full relative perspective-1000">
+                            {currentPage === 0 ? renderCover() : renderPage(pages[currentPage - 1])}
+                        </div>
+
+                        <div className="absolute top-1/2 -left-3 md:-left-14 -translate-y-1/2 z-30">
+                            <button onClick={goToPrevPage} disabled={currentPage === 0}
+                                className={`p-3 rounded-full bg-white shadow-xl text-indigo-600 border border-indigo-50 transition-all ${currentPage === 0 ? 'opacity-0 pointer-events-none' : 'hover:scale-110 active:scale-95'}`}>
+                                <ChevronLeft className="w-8 h-8" />
+                            </button>
+                        </div>
+                        <div className="absolute top-1/2 -right-3 md:-right-14 -translate-y-1/2 z-30">
+                            <button onClick={goToNextPage} disabled={currentPage === totalPages}
+                                className={`p-3 rounded-full bg-white shadow-xl text-indigo-600 border border-indigo-50 transition-all ${currentPage === totalPages ? 'opacity-0 pointer-events-none' : 'hover:scale-110 active:scale-95'}`}>
+                                <ChevronRight className="w-8 h-8" />
+                            </button>
+                        </div>
+                    </div>
+                    
+                    {currentPage > 0 && (
+                        <div className="mt-6 w-full max-w-xs bg-gray-200 rounded-full h-2">
+                            <div className="bg-indigo-500 h-2 rounded-full transition-all duration-300" style={{ width: `${(currentPage / totalPages) * 100}%` }}></div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<Ebook />);
+    </script>
+</body>
+</html>
